@@ -1,16 +1,18 @@
-.PHONY := all haxchi/haxchi_code.bin
+.PHONY := all code550.bin
 
-all: haxchi.srl
+all: WUP-N-DAAP.nds
 
-haxchi/haxchi_code.bin:
-	@cd haxchi_code && make clean && make && cd ..
+code550.bin:
+	@cd hbl_loader && make && cd ..
 
-haxchi_rop_hook.bin haxchi_rop.bin: haxchi/haxchi_code.bin haxchi_rop.s
+haxchi_rop_hook.bin haxchi_rop.bin: code550.bin haxchi_rop.s
 	armips haxchi_rop.s
 
-haxchi.srl: haxchi_rop_hook.bin haxchi_rop.bin haxchi.s
+WUP-N-DAAP.nds: haxchi_rop_hook.bin haxchi_rop.bin haxchi.s
 	armips haxchi.s
+	zip -JXjq9 rom.zip WUP-N-DAAP.nds
 
 clean:
-	@rm -f *.bin haxchi.srl
+	@rm -f *.bin WUP-N-DAAP.nds rom.zip
+	@cd hbl_loader && make clean && cd ..
 	@echo "all cleaned up !"

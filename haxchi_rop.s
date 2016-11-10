@@ -3,6 +3,7 @@ CORE0_STACKORIG equ (0x2B267B50) ; TEMP ?
 CORE0_ROPSTART equ (CORE0_STACKORIG + 0xAFC) ; TEMP ?
 RPX_OFFSET equ (0x01800000)
 COREINIT_OFFSET equ (- 0xFE3C00)
+SYSAPP_OFFSET equ (0x01B75D00)
 LMW_R21R1xC_LWZ_R0R1x3C_MTLR_R0_ADDI_R1_x38_BLR equ (RPX_OFFSET + 0x02208F6C)
 MTCTR_R28_ADDI_R6x68_MR_R5R29_R4R22_R3R21_BCTRL equ (RPX_OFFSET + 0x02208E90)
 BCTRL equ (RPX_OFFSET + 0x02208EA4)
@@ -16,8 +17,14 @@ MTCTR_R30_MR_R8R21_R7R29_R6R28_R5R27_R4R25_R3R24_BCTRL equ (COREINIT_OFFSET + 0x
 
 NERD_CREATETHREAD equ (RPX_OFFSET + 0x02223C40)
 NERD_STARTTHREAD equ (RPX_OFFSET + 0x0222405C)
+NERD_JOINTHREAD equ (RPX_OFFSET + 0x02223AEC)
 HACHI_APPLICATION_SHUTDOWNANDDESTROY equ (RPX_OFFSET + 0x02007774)
-;HACHI_APPLICATION_PTR equ (0x10A6E038) ;probably wrong
+NERD_FASTWIIU_SHUTDOWN equ (RPX_OFFSET + 0x201BD28)
+CORE_SHUTDOWN equ (RPX_OFFSET + 0x02222FBC)
+_START_EXIT equ (RPX_OFFSET + 0x02022A70)
+HACHI_APPLICATION_PTR equ (0x10A6E038)
+
+_SYSLAUNCHMIISTUDIO equ (SYSAPP_OFFSET + 0x020019D4)
 
 OS_CREATETHREAD equ (0x02025764 + COREINIT_OFFSET)
 OS_GETTHREADAFFINITY equ (0x020266A4 + COREINIT_OFFSET)
@@ -27,15 +34,14 @@ OSCODEGEN_SWITCHSECMODE equ (0x0201B2C0 + COREINIT_OFFSET)
 MEMCPY equ (0x02019BC8 + COREINIT_OFFSET)
 DC_FLUSHRANGE equ (0x02007B88 + COREINIT_OFFSET)
 IC_INVALIDATERANGE equ (0x02007CB0 + COREINIT_OFFSET)
-;SYS_LAUNCHSETTINGS equ (0x03B9B25C)
-;_EXIT equ (0x0229a240 + RPX_OFFSET)
-;exit  equ (0x022924b0 + RPX_OFFSET)
-
+OSSAVESDONE_READYTORELEASE equ (0x0201D5B8 + COREINIT_OFFSET)
+OSRELEASEFOREGROUND equ (0x0201D5BC + COREINIT_OFFSET)
 OSFATAL equ (0x02015218 + COREINIT_OFFSET)
 
 CODEGEN_ADR equ 0x01800000
 
-NERD_THREADOBJECT equ (0x1076FAA4 - 0x1000)
+NERD_THREAD0OBJECT equ (0x1076FAA4 - 0x1000)
+NERD_THREAD2OBJECT equ (0x1076FAA4 - 0x2000)
 
 .macro set_sp,v
 	.word LWZ_R0R1x14_LWZ_R30R1x8_R31R1xC_MTLR_R0_ADDI_R1x10_BLR
@@ -131,46 +137,56 @@ NERD_THREADOBJECT equ (0x1076FAA4 - 0x1000)
 .endmacro
 
 
-
-
-
+; hacked from arm7 ram offset (unsafe, game stack pointer)
 .create "haxchi_rop_hook.bin", 0x1076FAA4
 .arm.big
 
 rop_hook_start:
-
+	; move stack pointer to safe area
 	set_sp (rop_start - 4)
-
 .Close
 
 
-
-
-.create "haxchi_rop.bin", (0xF4000000 + 0xFD2000)
+; original game arm9 ram offset (safe, normally arm9 code)
+.create "haxchi_rop.bin", 0x16220400
 .arm.big
 
 rop_start:
-	;call_func HACHI_APPLICATION_SHUTDOWNANDDESTROY, HACHI_APPLICATION_PTR, 0, 0, 0
-	;call_func OSFATAL, 0x1007E7A8, 0, 0, 0
-	;call_func SYS_LAUNCHSETTINGS, 0, 0, 0, 0
-	; call_func exit, 0, 0, 0, 0
-	; call_func _EXIT, 0, 0, 0, 0
-	; .word _EXIT
-	; .word _START_EXIT
-	; 	.word 0xDEADBABE ; garbage
-	; 	.word 0xDEADBABE ; garbage
-	; 	.word 0xDEADBABE ; garbage
-	; 	.word 0xDEADBABE ; garbage
-	; 	.word 0xDEADBABE ; garbage
-	call_func_6args NERD_CREATETHREAD, NERD_THREADOBJECT, LWZ_R0xAFC_MTLR_R0_ADDI_R1xAF8_BLR, 0x1007E7A8, thread_param, 0x0, 0x0
-	call_func OS_GETTHREADAFFINITY, NERD_THREADOBJECT, 0, 0, 0
+	; quit out of GX2 so we can re-use it in core 0
+	call_func NERD_FASTWIIU_SHUTDOWN, 0, 0, 0, 0
+
+	; set up hbl_loader in core 0
+	call_func_6args NERD_CREATETHREAD, NERD_THREAD0OBJECT, LWZ_R0xAFC_MTLR_R0_ADDI_R1xAF8_BLR, 0x1007E7A8, thread0_param, 0x0, 0x0
 	call_func MEMCPY, CORE0_ROPSTART, core0rop, core0rop_end - core0rop, 0x0
-	call_func NERD_STARTTHREAD, NERD_THREADOBJECT, 0x0, 0x0, 0x0
-	;call_func DC_FLUSHRANGE, 0x1076EAA4, 0x1000, 0x0, 0x0
-	call_func BCTRL, 0x0, 0x0, 0x0, 0x0 ; infinite loop
+
+	; wait for hbl_loader to do its job
+	call_func NERD_STARTTHREAD, NERD_THREAD0OBJECT, 0x0, 0x0, 0x0
+	call_func NERD_JOINTHREAD, NERD_THREAD0OBJECT, 0x0, 0x0, 0x0
+
+	; clean up the rest of hachihachi
+	call_func HACHI_APPLICATION_SHUTDOWNANDDESTROY, HACHI_APPLICATION_PTR, 0, 0, 0
+	call_func CORE_SHUTDOWN, 0, 0, 0, 0
+
+	; on exit we want to go into mii studio directly
+	call_func _SYSLAUNCHMIISTUDIO, 0x0, 0x0, 0x0, 0x0
+
+	; prepare system for foreground release
+	call_func OSSAVESDONE_READYTORELEASE, 0, 0, 0, 0
+
+	; instruct all 3 cores to release foreground to prepare mii studio app launch
+	call_func_6args NERD_CREATETHREAD, NERD_THREAD0OBJECT, OSRELEASEFOREGROUND, 0, thread0_param, 0x0, 0x0
+	call_func NERD_STARTTHREAD, NERD_THREAD0OBJECT, 0x0, 0x0, 0x0
+
+	call_func_6args NERD_CREATETHREAD, NERD_THREAD2OBJECT, OSRELEASEFOREGROUND, 0, thread2_param, 0x0, 0x0
+	call_func NERD_STARTTHREAD, NERD_THREAD2OBJECT, 0x0, 0x0, 0x0
+
+	; we are the main thread in core 1 so we call this direct
+	call_func OSRELEASEFOREGROUND, 0, 0, 0, 0
+
+	; launch mii studio app
+	.word _START_EXIT
 
 	core0rop:
-		; .word OSFATAL
 		; switch codegen to RW
 		call_func OSCODEGEN_SWITCHSECMODE, 0x0, 0x0, 0x0, 0x0
 
@@ -181,23 +197,38 @@ rop_start:
 		; switch codegen to RX
 		call_func OSCODEGEN_SWITCHSECMODE, 0x1, 0x0, 0x0, 0x0
 		call_func IC_INVALIDATERANGE, CODEGEN_ADR, code_end - code, 0x0, 0x0
-	
+
+		; execute hbl_loader in codegen
 		.word CODEGEN_ADR
 	core0rop_end:
 
-	output_string:
-		.ascii "haxthread"
+	; core 0 thread params
+	output0_string:
+		.ascii "hax0thread"
 		.byte 0x00
 		.align 0x4
 
-	thread_param:
-		.word output_string
+	thread0_param:
+		.word output0_string
 		.word 0x00800000 ; stack size
 		.word 0x00000010 ; thread prio
 		.halfword 0x0001 ; thread affinity (core0)
 
+	; core 2 thread params
+	output2_string:
+		.ascii "hax2thread"
+		.byte 0x00
+		.align 0x4
+
+	thread2_param:
+		.word output2_string
+		.word 0x00800000 ; stack size
+		.word 0x00000010 ; thread prio
+		.halfword 0x0004 ; thread affinity (core2)
+
+	; hbl_loader code
 	code:
-		.incbin "haxchi_code/haxchi_code.bin"
+		.incbin "code550.bin"
 	code_end:
 
 .Close
