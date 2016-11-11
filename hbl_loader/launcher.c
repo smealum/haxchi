@@ -41,15 +41,19 @@ extern void KernelPatches(void);
 /* ****************************************************************** */
 void __main(void)
 {
-	/* Quit ongoing menu load music */
 	unsigned int sound_handle = 0;
-	OSDynLoad_Acquire("snd_core.rpl", &sound_handle);
-	void (* AXInit)();
-	void (* AXQuit)();
-	OSDynLoad_FindExport(sound_handle, 0, "AXInit", &AXInit);
-	OSDynLoad_FindExport(sound_handle, 0, "AXQuit", &AXQuit);
-	AXInit();
-	AXQuit();
+	OSDynLoad_Acquire("sndcore2.rpl", &sound_handle);
+	if(sound_handle == 0)
+	{
+		/* Quit ongoing menu load music */
+		OSDynLoad_Acquire("snd_core.rpl", &sound_handle);
+		void (* AXInit)();
+		void (* AXQuit)();
+		OSDynLoad_FindExport(sound_handle, 0, "AXInit", &AXInit);
+		OSDynLoad_FindExport(sound_handle, 0, "AXQuit", &AXQuit);
+		AXInit();
+		AXQuit();
+	}
 
     /* Get coreinit handle and keep it in memory */
     unsigned int coreinit_handle;
@@ -81,6 +85,57 @@ void __main(void)
 	/* do kernel exploit if needed */
     if (private_data.OSEffectiveToPhysical((void *)0xa0000000) == (void *)0)
         run_kexploit(&private_data);
+
+    /* Prepare for _SYSLaunchMiiStudio thread */
+    int (*OSCreateThread)(void *thread, void *entry, int argc, void *args, unsigned int stack, unsigned int stack_size, int priority, unsigned short attr);
+    int (*OSResumeThread)(void *thread);
+    int (*OSIsThreadTerminated)(void *thread);
+
+    OSDynLoad_FindExport(coreinit_handle, 0, "OSCreateThread", &OSCreateThread);
+    OSDynLoad_FindExport(coreinit_handle, 0, "OSResumeThread", &OSResumeThread);
+    OSDynLoad_FindExport(coreinit_handle, 0, "OSIsThreadTerminated", &OSIsThreadTerminated);
+
+    /* Allocate a stack for the thread */
+    void *stack = private_data.MEMAllocFromDefaultHeapEx(0x1000, 0x20);
+    /* Create the thread variable */
+    void *thread = private_data.MEMAllocFromDefaultHeapEx(0x1000, 8);
+    if(!thread || !stack)
+		ExitFailure(&private_data, "Thread memory allocation failed. Exit and re-enter browser.");
+
+	/* Quickly find _SYSLaunchMiiStudio */
+    unsigned int sysapp_handle;
+    void (*_SYSLaunchMiiStudio)(void) = 0;
+    OSDynLoad_Acquire("sysapp.rpl", &sysapp_handle);
+    OSDynLoad_FindExport(sysapp_handle, 0, "_SYSLaunchMiiStudio", &_SYSLaunchMiiStudio);
+	if(_SYSLaunchMiiStudio == (void*)0)
+		OSFatal("_SYSLaunchMiiStudio is not there?");
+
+	/* Do _SYSLaunchMiiStudio in core 1 */
+    int ret = OSCreateThread(thread, _SYSLaunchMiiStudio, 0, (void*)0, (unsigned int)stack+0x1000, 0x1000, 0, 0x1A);
+    if (ret == 0)
+        ExitFailure(&private_data, "Failed to create thread. Exit and re-enter browser.");
+
+    /* Schedule it for execution */
+    OSResumeThread(thread);
+
+    /* Can not use OSJoinThread, which hangs for some reason, so we use a detached one and wait for it to terminate */
+    while(OSIsThreadTerminated(thread) == 0)
+    {
+        asm volatile (
+        "    nop\n"
+        "    nop\n"
+        "    nop\n"
+        "    nop\n"
+        "    nop\n"
+        "    nop\n"
+        "    nop\n"
+        "    nop\n"
+        );
+    }
+
+    /* Free thread memory and stack */
+    private_data.MEMFreeToDefaultHeap(thread);
+    private_data.MEMFreeToDefaultHeap(stack);
 
     /* setup kernel copy data syscall */
     kern_write((void*)(KERN_SYSCALL_TBL_2 + (0x25 * 4)), (unsigned int)KernelCopyData);

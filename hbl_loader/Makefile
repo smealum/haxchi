@@ -2,10 +2,11 @@ PATH := $(DEVKITPPC)/bin:$(PATH)
 PREFIX ?= powerpc-eabi-
 CC = $(PREFIX)gcc
 AS = $(PREFIX)gcc
-CFLAGS = -std=gnu99 -Os -nostdinc -fno-builtin
+CFLAGS = -std=gnu99 -O0 -nostdinc -fno-builtin -g
 ASFLAGS = -mregnames -x assembler-with-cpp
 LD = $(PREFIX)ld
-LDFLAGS=-Ttext 1800000 --oformat binary -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/4.8.2 -lgcc
+OBJCOPY = $(PREFIX)objcopy
+LDFLAGS=-Ttext 1800000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/4.8.2 -lgcc
 OBJDUMP ?= $(PREFIX)objdump
 project	:=	.
 root	:=	$(CURDIR)
@@ -35,11 +36,13 @@ main: sd_loader.h
 	$(AS) $(ASFLAGS) -DVER=$(FIRMWARE) -c $(project)/crt0.S
 	cp -r $(root)/*.o $(build)
 	rm $(root)/*.o
-	$(LD) -s -o ../code$(FIRMWARE).bin $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS)
+	$(LD) -o code$(FIRMWARE).elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map code.map
+	$(OBJCOPY) code$(FIRMWARE).elf -O binary ../code$(FIRMWARE).bin
 
 clean:
 	rm -rf $(build)
 	rm -rf sd_loader.h
+	rm -rf code$(FIRMWARE).elf code.map
 	make clean -C sd_loader
 
 print_stats:

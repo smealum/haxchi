@@ -1,8 +1,7 @@
-.create "WUP-N-DAAP.nds", 0
-.nds
+.include "defines.s"
+.create FILE_NDS_NAME, 0
 
-; game stack return address
-hax_target_address equ 0x1076FAA4
+.nds
 
 .org 0x000
 	.ascii "HAXCHI" ; Game Title
@@ -19,7 +18,7 @@ hax_target_address equ 0x1076FAA4
 	.word arm9_data_end - arm9_data ; ARM9 size
 	.word arm7_data ; ARM7 rom_offset
 	.word 0x2000000 ; ARM7 entry_address
-	.word 0xEBDDFC00 + hax_target_address ; ARM7 ram_address
+	.word ARM7_ROM_MEM2_START + HAX_TARGET_ADDRESS ; ARM7 ram_address
 	.word arm7_data_end - arm7_data ; ARM7 size
 
 .org 0x080
