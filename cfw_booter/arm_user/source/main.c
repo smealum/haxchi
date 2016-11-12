@@ -9,7 +9,7 @@ void _main()
 
 	int(*reply)(int, int) = (int(*)(int, int))0x1012ED04;
 	
-	int saved_handle = *(volatile u32*)0x0012F000;
+	int saved_handle = *(volatile u32*)0x01E10000;
 	int myret = reply(saved_handle, 0);
 	if (myret != 0)
 		ios_shutdown(1);

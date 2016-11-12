@@ -2,7 +2,7 @@ PATH := $(DEVKITPPC)/bin:$(PATH)
 PREFIX ?= powerpc-eabi-
 CC = $(PREFIX)gcc
 AS = $(PREFIX)gcc
-CFLAGS = -std=gnu99 -O0 -nostdinc -fno-builtin -g
+CFLAGS = -std=gnu99 -O3 -nostdinc -fno-builtin
 ASFLAGS = -mregnames -x assembler-with-cpp
 LD = $(PREFIX)ld
 OBJCOPY = $(PREFIX)objcopy
@@ -37,7 +37,7 @@ main: sd_loader.h
 	cp -r $(root)/*.o $(build)
 	rm $(root)/*.o
 	$(LD) -o code$(FIRMWARE).elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map code.map
-	$(OBJCOPY) code$(FIRMWARE).elf -O binary ../code$(FIRMWARE).bin
+	$(OBJCOPY) code$(FIRMWARE).elf -S -O binary ../code$(FIRMWARE).bin
 
 clean:
 	rm -rf $(build)

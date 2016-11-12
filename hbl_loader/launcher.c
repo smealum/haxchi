@@ -23,9 +23,17 @@
 #define ROOTRPX_DBAT0L_VAL                              0x30000012
 #define COREINIT_DBAT0L_VAL                             0x32000012
 
+#define address_LiWaitIopComplete                       0x01010180
+#define address_LiWaitIopCompleteWithInterrupts         0x0101006C
+#define address_LiWaitOneChunk                          0x0100080C
+#define address_PrepareTitle_hook                       0xFFF184E4
+#define address_sgIsLoadingBuffer                       0xEFE19E80
+#define address_gDynloadInitialized                     0xEFE13DBC
+
 /* Install functions */
 static void InstallMain(private_data_t *private_data);
 static void InstallPatches(private_data_t *private_data);
+static void PrepareScreen(private_data_t *private_data);
 static void ExitFailure(private_data_t *private_data, const char *failure);
 
 static void SetupKernelSyscall(unsigned int addr);
@@ -41,20 +49,6 @@ extern void KernelPatches(void);
 /* ****************************************************************** */
 void __main(void)
 {
-	unsigned int sound_handle = 0;
-	OSDynLoad_Acquire("sndcore2.rpl", &sound_handle);
-	if(sound_handle == 0)
-	{
-		/* Quit ongoing menu load music */
-		OSDynLoad_Acquire("snd_core.rpl", &sound_handle);
-		void (* AXInit)();
-		void (* AXQuit)();
-		OSDynLoad_FindExport(sound_handle, 0, "AXInit", &AXInit);
-		OSDynLoad_FindExport(sound_handle, 0, "AXQuit", &AXQuit);
-		AXInit();
-		AXQuit();
-	}
-
     /* Get coreinit handle and keep it in memory */
     unsigned int coreinit_handle;
     OSDynLoad_Acquire("coreinit.rpl", &coreinit_handle);
@@ -86,56 +80,16 @@ void __main(void)
     if (private_data.OSEffectiveToPhysical((void *)0xa0000000) == (void *)0)
         run_kexploit(&private_data);
 
-    /* Prepare for _SYSLaunchMiiStudio thread */
-    int (*OSCreateThread)(void *thread, void *entry, int argc, void *args, unsigned int stack, unsigned int stack_size, int priority, unsigned short attr);
-    int (*OSResumeThread)(void *thread);
-    int (*OSIsThreadTerminated)(void *thread);
+	/* Since we inited GX2 without initing the screen before do that now */
+	/* Without this the hbl load will have some screen corruptions */
+	PrepareScreen(&private_data);
 
-    OSDynLoad_FindExport(coreinit_handle, 0, "OSCreateThread", &OSCreateThread);
-    OSDynLoad_FindExport(coreinit_handle, 0, "OSResumeThread", &OSResumeThread);
-    OSDynLoad_FindExport(coreinit_handle, 0, "OSIsThreadTerminated", &OSIsThreadTerminated);
-
-    /* Allocate a stack for the thread */
-    void *stack = private_data.MEMAllocFromDefaultHeapEx(0x1000, 0x20);
-    /* Create the thread variable */
-    void *thread = private_data.MEMAllocFromDefaultHeapEx(0x1000, 8);
-    if(!thread || !stack)
-		ExitFailure(&private_data, "Thread memory allocation failed. Exit and re-enter browser.");
-
-	/* Quickly find _SYSLaunchMiiStudio */
+	/* Do SYSLaunchMiiStudio to boot HBL */
     unsigned int sysapp_handle;
-    void (*_SYSLaunchMiiStudio)(void) = 0;
+    void (*SYSLaunchMiiStudio)(void) = 0;
     OSDynLoad_Acquire("sysapp.rpl", &sysapp_handle);
-    OSDynLoad_FindExport(sysapp_handle, 0, "_SYSLaunchMiiStudio", &_SYSLaunchMiiStudio);
-	if(_SYSLaunchMiiStudio == (void*)0)
-		OSFatal("_SYSLaunchMiiStudio is not there?");
-
-	/* Do _SYSLaunchMiiStudio in core 1 */
-    int ret = OSCreateThread(thread, _SYSLaunchMiiStudio, 0, (void*)0, (unsigned int)stack+0x1000, 0x1000, 0, 0x1A);
-    if (ret == 0)
-        ExitFailure(&private_data, "Failed to create thread. Exit and re-enter browser.");
-
-    /* Schedule it for execution */
-    OSResumeThread(thread);
-
-    /* Can not use OSJoinThread, which hangs for some reason, so we use a detached one and wait for it to terminate */
-    while(OSIsThreadTerminated(thread) == 0)
-    {
-        asm volatile (
-        "    nop\n"
-        "    nop\n"
-        "    nop\n"
-        "    nop\n"
-        "    nop\n"
-        "    nop\n"
-        "    nop\n"
-        "    nop\n"
-        );
-    }
-
-    /* Free thread memory and stack */
-    private_data.MEMFreeToDefaultHeap(thread);
-    private_data.MEMFreeToDefaultHeap(stack);
+    OSDynLoad_FindExport(sysapp_handle, 0, "SYSLaunchMiiStudio", &SYSLaunchMiiStudio);
+	SYSLaunchMiiStudio();
 
     /* setup kernel copy data syscall */
     kern_write((void*)(KERN_SYSCALL_TBL_2 + (0x25 * 4)), (unsigned int)KernelCopyData);
@@ -156,23 +110,20 @@ void __main(void)
 	OSExitThread(0);
 }
 
-void ExitFailure(private_data_t *private_data, const char *failure)
+void PrepareScreen(private_data_t *private_data)
 {
-    /************************************************************************/
     // Prepare screen
     void (*OSScreenInit)();
     unsigned int (*OSScreenGetBufferSizeEx)(unsigned int bufferNum);
     unsigned int (*OSScreenSetBufferEx)(unsigned int bufferNum, void * addr);
     unsigned int (*OSScreenClearBufferEx)(unsigned int bufferNum, unsigned int temp);
     unsigned int (*OSScreenFlipBuffersEx)(unsigned int bufferNum);
-    unsigned int (*OSScreenPutFontEx)(unsigned int bufferNum, unsigned int posX, unsigned int posY, const char * buffer);
 
     OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenInit", &OSScreenInit);
     OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenGetBufferSizeEx", &OSScreenGetBufferSizeEx);
     OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenSetBufferEx", &OSScreenSetBufferEx);
     OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenClearBufferEx", &OSScreenClearBufferEx);
     OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenFlipBuffersEx", &OSScreenFlipBuffersEx);
-    OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenPutFontEx", &OSScreenPutFontEx);
 
     // Prepare screen
     int screen_buf0_size = 0;
@@ -197,6 +148,18 @@ void ExitFailure(private_data_t *private_data, const char *failure)
     // Flip buffers
     OSScreenFlipBuffersEx(0);
     OSScreenFlipBuffersEx(1);
+}
+
+void ExitFailure(private_data_t *private_data, const char *failure)
+{
+    /************************************************************************/
+    unsigned int (*OSScreenClearBufferEx)(unsigned int bufferNum, unsigned int temp);
+    unsigned int (*OSScreenFlipBuffersEx)(unsigned int bufferNum);
+    unsigned int (*OSScreenPutFontEx)(unsigned int bufferNum, unsigned int posX, unsigned int posY, const char * buffer);
+
+    OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenClearBufferEx", &OSScreenClearBufferEx);
+    OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenFlipBuffersEx", &OSScreenFlipBuffersEx);
+    OSDynLoad_FindExport(private_data->coreinit_handle, 0, "OSScreenPutFontEx", &OSScreenPutFontEx);
 
     OSScreenPutFontEx(1, 0, 0, failure);
 
@@ -404,6 +367,15 @@ static void InstallPatches(private_data_t *private_data)
     osSpecificFunctions.addr_KernSyscallTbl3 = KERN_SYSCALL_TBL_3;
     osSpecificFunctions.addr_KernSyscallTbl4 = KERN_SYSCALL_TBL_4;
     osSpecificFunctions.addr_KernSyscallTbl5 = KERN_SYSCALL_TBL_5;
+
+    osSpecificFunctions.LiWaitIopComplete = (int (*)(int, int *)) address_LiWaitIopComplete;
+    osSpecificFunctions.LiWaitIopCompleteWithInterrupts = (int (*)(int, int *)) address_LiWaitIopCompleteWithInterrupts;
+    osSpecificFunctions.addr_LiWaitOneChunk = address_LiWaitOneChunk;
+    osSpecificFunctions.addr_PrepareTitle_hook = address_PrepareTitle_hook;
+    osSpecificFunctions.addr_sgIsLoadingBuffer = address_sgIsLoadingBuffer;
+    osSpecificFunctions.addr_gDynloadInitialized = address_gDynloadInitialized;
+    osSpecificFunctions.orig_LiWaitOneChunkInstr = *(unsigned int*)address_LiWaitOneChunk;
+
     //! pointer to main entry point of a title
     osSpecificFunctions.addr_OSTitle_main_entry = ADDRESS_OSTitle_main_entry_ptr;
 

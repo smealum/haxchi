@@ -13,10 +13,11 @@ SECTIONS {
 	.data : {
 		*(.rodata*);
 		*(.data*);
+		*(.bss*);
 	}
 	/DISCARD/ : {
 		*(*);
 	}
 }
 
-ASSERT((SIZEOF(.text) + SIZEOF(.data)) < 0x1000, "Memory overlapping with main elf.");
+ASSERT((SIZEOF(.text) + SIZEOF(.data)) < 0x1300, "Memory overlapping with main elf.");

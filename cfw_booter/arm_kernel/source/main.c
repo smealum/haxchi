@@ -70,7 +70,7 @@ int _main()
 	unsigned int control_register = disable_mmu();
 
 	/* Save the request handle so we can reply later */
-	*(volatile u32*)0x0012F000 = *(volatile u32*)0x1016AD18;
+	*(volatile u32*)0x01E10000 = *(volatile u32*)0x1016AD18;
 
 	/* Patch kernel_error_handler to BX LR immediately */
 	*(int*)0x08129A24 = 0xE12FFF1E;
@@ -84,7 +84,7 @@ int _main()
 	void * pusb_root_thread = (void*)0x10100174;
 	kernel_memcpy(pusb_root_thread, (void*)repairData_usb_root_thread, sizeof(repairData_usb_root_thread));
 
-	void * pUserBinSource = (void*)0x00148000;
+	void * pUserBinSource = (void*)0x01E50000;
 	void * pUserBinDest = (void*)0x101312D0;
 	kernel_memcpy(pUserBinDest, (void*)pUserBinSource, sizeof(arm_user_bin));
 

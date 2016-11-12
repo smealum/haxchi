@@ -118,8 +118,10 @@ rop_hook_start:
 .arm.big
 
 rop_start:
-	; quit out of GX2 so we can re-use it in core 0
+	; do hachihachi cleanups so we can use everything safely
+	call_func HACHI_APPLICATION_SHUTDOWNANDDESTROY, HACHI_APPLICATION_PTR, 0, 0, 0
 	call_func NERD_FASTWIIU_SHUTDOWN, 0, 0, 0, 0
+	call_func CORE_SHUTDOWN, 0, 0, 0, 0
 
 	; set up hbl_loader in core 0
 	call_func_6args NERD_CREATETHREAD, NERD_THREAD0OBJECT, LWZ_R0xAFC_MTLR_R0_ADDI_R1xAF8_BLR, 0x1007E7A8, thread0_param, 0x0, 0x0
@@ -197,10 +199,6 @@ rop_start:
 	; wait for hbl_loader to do its job
 	call_func NERD_STARTTHREAD, NERD_THREAD0OBJECT, 0x0, 0x0, 0x0
 	call_func NERD_JOINTHREAD, NERD_THREAD0OBJECT, 0x0, 0x0, 0x0
-
-	; clean up the rest of hachihachi
-	call_func HACHI_APPLICATION_SHUTDOWNANDDESTROY, HACHI_APPLICATION_PTR, 0, 0, 0
-	call_func CORE_SHUTDOWN, 0, 0, 0, 0
 
 	; prepare system for foreground release
 	call_func OSSAVESDONE_READYTORELEASE, 0, 0, 0, 0

