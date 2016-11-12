@@ -16,8 +16,10 @@ of course, using wupclient to install haxchi permanently requires that redNAND b
 make sure to replace YOUR_GAME_TITLE_ID with one of the following:  
 10179B00 - US Brain Age  
 10179C00 - PAL Brain Training  
-10198A00 - US Yoshi's Island DS  
+10198900 - US Yoshi's Island DS  
 10198A00 - PAL Yoshi's Island DS  
+101A1F00 - US WarioWare: Touched  
+101A2000 - PAL WarioWare: Touched  
 101A5600 - US Kirby Squeak Squad  
 101A5700 - PAL Kirby Mouse Attack  
 
