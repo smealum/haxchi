@@ -52,6 +52,7 @@ yoshids.nds:
 	armips haxchi_rop.s
 	armips haxchi.s
 	mv rom.nds yoshids.nds
+	cp yoshids.nds wwtouched.nds
 
 brainage_cfw.nds:
 	armips haxchi_rop.s
@@ -67,6 +68,7 @@ yoshids_cfw.nds:
 	armips haxchi_rop.s
 	armips haxchi.s
 	mv rom.nds yoshids_cfw.nds
+	cp yoshids_cfw.nds wwtouched_cfw.nds
 
 brainage.zip:
 	zip -JXjq9 brainage.zip brainage.nds
@@ -76,6 +78,7 @@ kirby.zip:
 
 yoshids.zip:
 	zip -JXjq9 yoshids.zip yoshids.nds
+	zip -JXjq9 wwtouched.zip wwtouched.nds
 
 brainage_cfw.zip:
 	zip -JXjq9 brainage_cfw.zip brainage_cfw.nds
@@ -85,10 +88,11 @@ kirby_cfw.zip:
 
 yoshids_cfw.zip:
 	zip -JXjq9 yoshids_cfw.zip yoshids_cfw.nds
+	zip -JXjq9 wwtouched_cfw.zip wwtouched_cfw.nds
 
 clean:
-	@rm -f *.bin defines.s brainage.nds brainage.zip kirby.nds kirby.zip yoshids.nds yoshids.zip
-	@rm -f brainage_cfw.nds brainage_cfw.zip kirby_cfw.nds kirby_cfw.zip yoshids_cfw.nds yoshids_cfw.zip
+	@rm -f *.bin defines.s brainage.nds brainage.zip kirby.nds kirby.zip wwtouched.nds wwtouched.zip yoshids.nds yoshids.zip
+	@rm -f brainage_cfw.nds brainage_cfw.zip kirby_cfw.nds kirby_cfw.zip wwtouched_cfw.nds wwtouched_cfw.zip  yoshids_cfw.nds yoshids_cfw.zip
 	@cd cfw_booter && make clean && cd ..
 	@cd hbl_loader && make clean && cd ..
 	@echo "all cleaned up !"
