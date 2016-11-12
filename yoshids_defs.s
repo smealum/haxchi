@@ -1,6 +1,4 @@
 
-FILE_NDS_NAME equ "yoshids.nds"
-
 ; game stack return address
 HAX_TARGET_ADDRESS equ (0x1079B52C)
 

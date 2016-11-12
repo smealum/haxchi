@@ -1,5 +1,5 @@
 .include "defines.s"
-.create FILE_NDS_NAME, 0
+.create "rom.nds", 0
 
 .nds
 

@@ -1,6 +1,4 @@
 
-FILE_NDS_NAME equ "kirby.nds"
-
 ; game stack return address
 HAX_TARGET_ADDRESS equ (0x107968AC)
 
