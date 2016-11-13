@@ -36,15 +36,11 @@ main: sd_loader.h
 	$(AS) $(ASFLAGS) -DVER=$(FIRMWARE) -c $(project)/crt0.S
 	cp -r $(root)/*.o $(build)
 	rm $(root)/*.o
-	$(LD) -o code$(FIRMWARE).elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map code.map
-	$(OBJCOPY) code$(FIRMWARE).elf -S -O binary ../code$(FIRMWARE).bin
+	$(LD) -o hbl_loader.elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map hbl_loader.map
+	$(OBJCOPY) hbl_loader.elf -S -O binary ../hbl_loader.bin
 
 clean:
 	rm -rf $(build)
 	rm -rf sd_loader.h
-	rm -rf code$(FIRMWARE).elf code.map
+	rm -rf hbl_loader.elf hbl_loader.map
 	make clean -C sd_loader
-
-print_stats:
-	@echo
-	@echo "code size : loadiine   =>" `$(OBJDUMP) -h ../loadiine.elf | awk '/.kernel_code|.text|.menu_magic|.loader_magic|.fs_method_calls|.rodata|.data|.sdata|.bss|.sbss|.fs_magic/ { sum+=strtonum("0x"$$3) } END {print sum}'` / 7530312

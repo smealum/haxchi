@@ -6,14 +6,12 @@ CFLAGS = -std=gnu99 -O3 -nostdinc -fno-builtin
 ASFLAGS = -mregnames -x assembler-with-cpp
 LD = $(PREFIX)ld
 OBJCOPY = $(PREFIX)objcopy
-LDFLAGS=-Ttext 1800000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/4.8.2 -lgcc
+LDFLAGS=-Ttext 180C000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/4.8.2 -lgcc
 OBJDUMP ?= $(PREFIX)objdump
 project	:=	.
 root	:=	$(CURDIR)
 build	:=	 $(root)/bin
 
-CFLAGS += -DUSE_SD_LOADER
-ASFLAGS += -DUSE_SD_LOADER
 FIRMWARE = 550
 
 all: clean setup main
@@ -36,15 +34,11 @@ main: $(CURDIR)/payload/arm_kernel_bin.h
 	$(AS) $(ASFLAGS) -DVER=$(FIRMWARE) -c $(project)/crt0.S
 	cp -r $(root)/*.o $(build)
 	rm $(root)/*.o
-	$(LD) -o code$(FIRMWARE).elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map code.map
-	$(OBJCOPY) code$(FIRMWARE).elf -S -O binary ../code$(FIRMWARE).bin
+	$(LD) -o cfw_booter.elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map cfw_booter.map
+	$(OBJCOPY) cfw_booter.elf -S -O binary ../cfw_booter.bin
 
 clean:
 	rm -rf $(build) payload
-	rm -rf code$(FIRMWARE).elf code.map
+	rm -rf cfw_booter.elf cfw_booter.map
 	$(MAKE) --no-print-directory -C $(CURDIR)/arm_user -f  $(CURDIR)/arm_user/Makefile clean
 	$(MAKE) --no-print-directory -C $(CURDIR)/arm_kernel -f  $(CURDIR)/arm_kernel/Makefile clean
-
-print_stats:
-	@echo
-	@echo "code size : loadiine   =>" `$(OBJDUMP) -h ../loadiine.elf | awk '/.kernel_code|.text|.menu_magic|.loader_magic|.fs_method_calls|.rodata|.data|.sdata|.bss|.sbss|.fs_magic/ { sum+=strtonum("0x"$$3) } END {print sum}'` / 7530312

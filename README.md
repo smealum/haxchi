@@ -13,15 +13,41 @@ of course, using wupclient to install haxchi permanently requires that redNAND b
 ```
   w.up("rom.zip", "/vol/storage_usb01/usr/title/00050000/YOUR_GAME_TITLE_ID/content/0010/rom.zip")
 ```
+
+To upload a config.txt as well you will have to do the following if the title is installed on NAND:
+```
+  w.up("config.txt", "/vol/storage_mlc01/usr/title/00050000/YOUR_GAME_TITLE_ID/content/config.txt")  
+  w.chmod("/vol/storage_mlc01/usr/title/00050000/YOUR_GAME_TITLE_ID/content/config.txt", 0x644)  
+```
+and for the title being installed to USB you do the following:
+```
+  w.up("config.txt", "/vol/storage_usb01/usr/title/00050000/YOUR_GAME_TITLE_ID/content/config.txt")  
+  w.chmod("/vol/storage_usb01/usr/title/00050000/YOUR_GAME_TITLE_ID/content/config.txt", 0x644)  
+```
+
 make sure to replace YOUR_GAME_TITLE_ID with one of the following:  
+10179A00 - JPN Brain Age  
 10179B00 - US Brain Age  
 10179C00 - PAL Brain Training  
+10198800 - JPN Yoshi's Island DS  
 10198900 - US Yoshi's Island DS  
 10198A00 - PAL Yoshi's Island DS  
+101A1E00 - JPN WarioWare: Touched  
 101A1F00 - US WarioWare: Touched  
 101A2000 - PAL WarioWare: Touched  
+101A5500 - JPN Kirby Squeak Squad  
 101A5600 - US Kirby Squeak Squad  
 101A5700 - PAL Kirby Mouse Attack  
+
+a config.txt can look like this for example:
+```
+a=fw.img
+b=rednand/fw.img
+x=wiiu/apps/ftpiiu/ftpiiu.elf
+down=wiiu/apps/snes9x2010_libretro/snes9x2010_libretro.elf
+default=wiiu/apps/homebrew_launcher/homebrew_launcher.elf
+```
+please note though that if you want to load a fw.img the name HAS to be named fw.img in whatever folder you use, nothing else will work.  
 
 ## contents
 

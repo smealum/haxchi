@@ -40,7 +40,7 @@ CFLAGS	:=  -std=gnu11 -mrvl -mcpu=750 -meabi -mhard-float -ffast-math -fno-built
 CXXFLAGS := -std=gnu++11 -mrvl -mcpu=750 -meabi -mhard-float -ffast-math \
 		    -O3 -Wall -Wextra -Wno-unused-parameter -Wno-strict-aliasing $(INCLUDE)
 ASFLAGS	:= -mregnames
-LDFLAGS	:= -nostartfiles -Wl,--gc-sections
+LDFLAGS	:= -nostartfiles -Wl,--gc-sections -Xlinker -Map=fuck.map
 
 Q := @
 MAKEFLAGS += --no-print-directory

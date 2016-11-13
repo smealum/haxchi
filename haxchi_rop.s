@@ -2,7 +2,9 @@
 .include "defines.s"
 
 ; more useful definitions
-CODEGEN_ADR equ (0x01800000)
+HBL_LOADER_ADR equ (0x01800000)
+SELECTOR_ADDRESS equ (0x01808000)
+CFW_BOOTER_ADR equ (0x0180C000)
 
 NERD_THREAD0OBJECT equ (HAX_TARGET_ADDRESS - 0x1000)
 NERD_THREAD2OBJECT equ (HAX_TARGET_ADDRESS - 0x2000)
@@ -221,15 +223,17 @@ rop_start:
 		call_func OSCODEGEN_SWITCHSECMODE, 0x0, 0x0, 0x0, 0x0
 
 		; memcpy code
-		call_func MEMCPY, CODEGEN_ADR, code, code_end - code, 0x0
-		call_func DC_FLUSHRANGE, CODEGEN_ADR, code_end - code, 0x0, 0x0
+		call_func MEMCPY, HBL_LOADER_ADR, hbl_loader, hbl_loader_end - hbl_loader, 0x0
+		call_func MEMCPY, SELECTOR_ADDRESS, code, code_end - code, 0x0
+		call_func MEMCPY, CFW_BOOTER_ADR, cfw_booter, cfw_booter_end - cfw_booter, 0x0
+		call_func DC_FLUSHRANGE, HBL_LOADER_ADR, 0xE000, 0x0, 0x0
 
 		; switch codegen to RX
 		call_func OSCODEGEN_SWITCHSECMODE, 0x1, 0x0, 0x0, 0x0
-		call_func IC_INVALIDATERANGE, CODEGEN_ADR, code_end - code, 0x0, 0x0
+		call_func IC_INVALIDATERANGE, HBL_LOADER_ADR, 0xE000, 0x0, 0x0
 
 		; execute hbl_loader in codegen
-		.word CODEGEN_ADR
+		.word SELECTOR_ADDRESS
 	core0rop_end:
 
 	; core 0 thread params
@@ -256,9 +260,16 @@ rop_start:
 		.word 0x00000010 ; thread prio
 		.halfword 0x0004 ; thread affinity (core2)
 
-	; hbl_loader code
 	code:
 		.incbin "code550.bin"
 	code_end:
+
+	hbl_loader:
+		.incbin "hbl_loader.bin"
+	hbl_loader_end:
+
+	cfw_booter:
+		.incbin "cfw_booter.bin"
+	cfw_booter_end:
 
 .Close

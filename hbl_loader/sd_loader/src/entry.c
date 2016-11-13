@@ -388,16 +388,16 @@ static int LoadFileToMem(private_data_t *private_data, const char *filepath, uns
 
         int status = private_data->FSGetMountSource(pClient, pCmd, 0, tempPath, -1);
         if (status != 0) {
-            private_data->OSFatal("FSGetMountSource failed.");
+            private_data->OSFatal("-3");
         }
         status = private_data->FSMount(pClient, pCmd, tempPath, mountPath, FS_MAX_MOUNTPATH_SIZE, -1);
         if(status != 0) {
-            private_data->OSFatal("SD mount failed.");
+            private_data->OSFatal("-4");
         }
 
         status = private_data->FSOpenFile(pClient, pCmd, filepath, "r", &iFd, -1);
         if(status != 0) {
-            private_data->OSFatal("FSOpenFile failed.");
+            private_data->OSFatal("-5");
         }
 
         FSStat stat;
@@ -410,7 +410,7 @@ static int LoadFileToMem(private_data_t *private_data, const char *filepath, uns
         if(stat.size > 0)
             pBuffer = private_data->MEMAllocFromDefaultHeapEx((stat.size + 0x3F) & ~0x3F, 0x40);
         else
-            private_data->OSFatal("ELF file empty.");
+            private_data->OSFatal("-6");
 
         unsigned int done = 0;
 
@@ -564,9 +564,18 @@ static void loadFunctionPointers(private_data_t * private_data)
     OS_FIND_EXPORT(sysapp_handle, "SYSRelaunchTitle", private_data->SYSRelaunchTitle);
 }
 
-int _start(int argc, char **argv)
+extern const char PROVIDED_ELF_LAUNCH_PATH;
+extern int INT_EXIT_TO_MENU;
+
+unsigned int _main(int argc, char **argv)
 {
-    private_data_t private_data;
+	unsigned int entry = *(unsigned int*)OS_SPECIFICS->addr_OSTitle_main_entry;
+
+	//! force launch normal title every time (safety lock-out mechanism)
+	if(INT_EXIT_TO_MENU == 2)
+		return entry;
+
+	private_data_t private_data;
 
     if(MAIN_ENTRY_ADDR != 0xC001C0DE)
     {
@@ -600,18 +609,18 @@ int _start(int argc, char **argv)
                     unsigned char *pElfBuffer = NULL;
                     unsigned int uiElfSize = 0;
 
-                    LoadFileToMem(&private_data, CAFE_OS_SD_PATH WIIU_PATH "/apps/homebrew_launcher/homebrew_launcher.elf", &pElfBuffer, &uiElfSize);
+                    LoadFileToMem(&private_data, &PROVIDED_ELF_LAUNCH_PATH, &pElfBuffer, &uiElfSize);
 
                     if(!pElfBuffer)
                     {
-                        private_data.OSFatal("Failed to load homebrew_launcher.elf");
+                        private_data.OSFatal("-1");
                     }
                     else
                     {
                         MAIN_ENTRY_ADDR = load_elf_image(&private_data, pElfBuffer);
                         if(MAIN_ENTRY_ADDR == 0)
                         {
-                            private_data.OSFatal("Failed to load homebrew_launcher.elf");
+                            private_data.OSFatal("-2");
                         }
                         else
                         {
@@ -623,9 +632,14 @@ int _start(int argc, char **argv)
             else
             {
                 int returnVal = ((int (*)(int, char **))MAIN_ENTRY_ADDR)(argc, argv);
+				//! launched custom elf once, now activate lock-out mechanism for safety
+				if(INT_EXIT_TO_MENU == 1)
+					INT_EXIT_TO_MENU = 2;
                 //! exit to miimaker and restart application on re-enter of another application
                 if(returnVal == (int)EXIT_RELAUNCH_ON_LOAD)
                 {
+					//! exited hbl itself, activate lock-out mechanism for safety
+					INT_EXIT_TO_MENU = 2;
                     break;
                 }
                 //! exit to homebrew launcher in all other cases
@@ -640,13 +654,13 @@ int _start(int argc, char **argv)
         }
     }
 
-    int ret = ( (int (*)(int, char **))(*(unsigned int*)OS_SPECIFICS->addr_OSTitle_main_entry) )(argc, argv);
-
-    //! if an application returns and was an RPX launch then launch HBL again
+    //! if an application was an RPX launch then launch HBL again after return
     if(MAIN_ENTRY_ADDR == 0xC001C0DE)
     {
+        int ret = ( (int (*)(int, char **))(entry) )(argc, argv);
         private_data.SYSRelaunchTitle(0, 0);
-        private_data.exit(0);
+        private_data.exit(ret);
     }
-    return ret;
+    //! launch the original title with clean stack
+    return entry;
 }
