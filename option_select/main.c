@@ -105,18 +105,13 @@ uint32_t __main(void)
 	void*(*MEMAllocFromDefaultHeap)(int size) = (void*)(*pMEMAllocFromDefaultHeap);
 	void(*MEMFreeToDefaultHeap)(void *ptr) = (void*)(*pMEMFreeToDefaultHeap);
 
-	void* (*OSAllocFromSystem)(uint32_t size, int align);
-	void (*OSFreeToSystem)(void *ptr);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSAllocFromSystem", &OSAllocFromSystem);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSFreeToSystem", &OSFreeToSystem);
-
 	int hbl = 1;
 	//default path goes to HBL
 	strcpy((void*)0xF5E70000,"/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf");
 
 	int iFd = -1;
-	void *pClient = OSAllocFromSystem(0x1700,4);
-	void *pCmd = OSAllocFromSystem(0xA80,4);
+	void *pClient = MEMAllocFromDefaultHeapEx(0x1700,4);
+	void *pCmd = MEMAllocFromDefaultHeapEx(0xA80,4);
 	void *pBuffer = NULL;
 
 	void (*DCStoreRange)(void *buffer, uint32_t length);
@@ -153,7 +148,7 @@ uint32_t __main(void)
 
 	if(stat.size > 0)
 	{
-		pBuffer = OSAllocFromSystem(stat.size+1,0x40);
+		pBuffer = MEMAllocFromDefaultHeapEx(stat.size+1,0x40);
 		memset(pBuffer,0,stat.size+1);
 	}
 	else
@@ -219,24 +214,24 @@ uint32_t __main(void)
 						if(FnameChar[0] == '/' && fLen > 7 && *(FnameChar+fLen-7) == '/')
 						{
 							*(FnameChar+fLen-7) = '\0';
-							__os_snprintf((void*)0xF5E70000,160,"/vol/sdcard%s",FnameChar);
+							__os_snprintf((void*)0xF5E70000,32,"/vol/sdcard%s",FnameChar);
 						}
 						else if(FnameChar[0] != '/' && fLen > 6 && *(FnameChar+fLen-7) == '/')
 						{
 							*(FnameChar+fLen-7) = '\0';
-							__os_snprintf((void*)0xF5E70000,160,"/vol/sdcard/%s",FnameChar);
+							__os_snprintf((void*)0xF5E70000,32,"/vol/sdcard/%s",FnameChar);
 						}
 						else
-							__os_snprintf((void*)0xF5E70000,160,"/vol/sdcard");
+							__os_snprintf((void*)0xF5E70000,32,"/vol/sdcard");
 						hbl = 0;
 						break;
 					}
 					else if(memcmp(FnameChar+fLen-4,".elf",5) == 0)
 					{
 						if(FnameChar[0] == '/')
-							__os_snprintf((void*)0xF5E70000,80,"/vol/external01%s",FnameChar);
+							__os_snprintf((void*)0xF5E70000,250,"/vol/external01%s",FnameChar);
 						else
-							__os_snprintf((void*)0xF5E70000,80,"/vol/external01/%s",FnameChar);
+							__os_snprintf((void*)0xF5E70000,250,"/vol/external01/%s",FnameChar);
 						break;
 					}
 				}
@@ -249,18 +244,13 @@ fileEnd:
 		if(iFd >= 0)
 			FSCloseFile(pClient, pCmd, iFd, -1);
 		FSDelClient(pClient);
-		OSFreeToSystem(pClient);
-		OSFreeToSystem(pCmd);
+		MEMFreeToDefaultHeap(pClient);
+		MEMFreeToDefaultHeap(pCmd);
 	}
 	if(pBuffer)
-		OSFreeToSystem(pBuffer);
+		MEMFreeToDefaultHeap(pBuffer);
 	if(hbl)
-	{
-		if(strstr((char*)0xF5E70000, "/homebrew_launcher.elf") != NULL)
-			*(int*)0xF5E70050 = 0; //return to hbl
-		else
-			*(int*)0xF5E70050 = 1; //return to menu
-	}
+		*(int*)0xF5E700FC = 0; //set SD_LOADER_FORCE_HBL to 0
 	DCStoreRange((void*)0xF5E70000,0xA0);
 	uint32_t entry = (hbl ? 0x01800000 : 0x0180C000);
 	return entry;

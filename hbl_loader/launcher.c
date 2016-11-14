@@ -305,16 +305,6 @@ static void InstallMain(private_data_t *private_data)
     if(section_offset > 0)
         SC_0x25_KernelCopyData((void*)(CODE_RW_BASE_OFFSET + main_text_addr), main_text, main_text_len);
 
-	// get the .rodata1 section
-    unsigned int main_rodata1_addr = 0;
-    unsigned int main_rodata1_len = 0;
-    section_offset = get_section(private_data, private_data->data_elf, ".rodata1", &main_rodata1_len, &main_rodata1_addr, 0);
-    if(section_offset > 0)
-    {
-        /* Copy main rodata to memory */
-        SC_0x25_KernelCopyData((void*)(DATA_RW_BASE_OFFSET + main_rodata1_addr), (void*)0xF5E70000, main_rodata1_len);
-    }
-
     // get the .rodata section
     unsigned int main_rodata_addr = 0;
     unsigned int main_rodata_len = 0;
@@ -367,6 +357,9 @@ static void InstallPatches(private_data_t *private_data)
     SC_0x25_KernelCopyData((void*)&ELF_DATA_ADDR, &bufferU32, sizeof(bufferU32));
     bufferU32 = 0;
     SC_0x25_KernelCopyData((void*)&ELF_DATA_SIZE, &bufferU32, sizeof(bufferU32));
+	/* Related to sd-loader elf choice */
+	SC_0x25_KernelCopyData((void*)SD_LOADER_PATH, (void*)0xF5E70000, 250);
+	SC_0x25_KernelCopyData((void*)&SD_LOADER_FORCE_HBL, &bufferU32, sizeof(bufferU32));
 
     unsigned int jump_main_hook = 0;
     osSpecificFunctions.addr_OSDynLoad_Acquire = (unsigned int)OSDynLoad_Acquire;

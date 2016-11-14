@@ -564,17 +564,10 @@ static void loadFunctionPointers(private_data_t * private_data)
     OS_FIND_EXPORT(sysapp_handle, "SYSRelaunchTitle", private_data->SYSRelaunchTitle);
 }
 
-extern const char PROVIDED_ELF_LAUNCH_PATH;
-extern int INT_EXIT_TO_MENU;
+static const char *HBL_ELF_PATH = "/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf";
 
 unsigned int _main(int argc, char **argv)
 {
-	unsigned int entry = *(unsigned int*)OS_SPECIFICS->addr_OSTitle_main_entry;
-
-	//! force launch normal title every time (safety lock-out mechanism)
-	if(INT_EXIT_TO_MENU == 2)
-		return entry;
-
 	private_data_t private_data;
 
     if(MAIN_ENTRY_ADDR != 0xC001C0DE)
@@ -609,7 +602,7 @@ unsigned int _main(int argc, char **argv)
                     unsigned char *pElfBuffer = NULL;
                     unsigned int uiElfSize = 0;
 
-                    LoadFileToMem(&private_data, &PROVIDED_ELF_LAUNCH_PATH, &pElfBuffer, &uiElfSize);
+                    LoadFileToMem(&private_data, SD_LOADER_FORCE_HBL ? HBL_ELF_PATH : SD_LOADER_PATH, &pElfBuffer, &uiElfSize);
 
                     if(!pElfBuffer)
                     {
@@ -632,19 +625,15 @@ unsigned int _main(int argc, char **argv)
             else
             {
                 int returnVal = ((int (*)(int, char **))MAIN_ENTRY_ADDR)(argc, argv);
-				//! launched custom elf once, now activate lock-out mechanism for safety
-				if(INT_EXIT_TO_MENU == 1)
-					INT_EXIT_TO_MENU = 2;
                 //! exit to miimaker and restart application on re-enter of another application
                 if(returnVal == (int)EXIT_RELAUNCH_ON_LOAD)
                 {
-					//! exited hbl itself, activate lock-out mechanism for safety
-					INT_EXIT_TO_MENU = 2;
                     break;
                 }
                 //! exit to homebrew launcher in all other cases
                 else
                 {
+                    SD_LOADER_FORCE_HBL = 1;
                     MAIN_ENTRY_ADDR = 0xDEADC0DE;
                     private_data.SYSRelaunchTitle(0, 0);
                     private_data.exit(0);
@@ -654,13 +643,14 @@ unsigned int _main(int argc, char **argv)
         }
     }
 
+    unsigned int entry = *(unsigned int*)OS_SPECIFICS->addr_OSTitle_main_entry;
     //! if an application was an RPX launch then launch HBL again after return
-    if(MAIN_ENTRY_ADDR == 0xC001C0DE)
+    /*if(MAIN_ENTRY_ADDR == 0xC001C0DE)
     {
         int ret = ( (int (*)(int, char **))(entry) )(argc, argv);
         private_data.SYSRelaunchTitle(0, 0);
         private_data.exit(ret);
-    }
+    }*/
     //! launch the original title with clean stack
     return entry;
 }

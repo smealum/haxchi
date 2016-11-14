@@ -29,6 +29,9 @@ extern "C" {
 
 #define MEM_AREA_TABLE              ((s_mem_area*)(MEM_BASE + 0x1600))
 
+#define SD_LOADER_PATH              ((char*)(MEM_BASE + 0x1E00))
+#define SD_LOADER_FORCE_HBL         (*(volatile unsigned int*)(MEM_BASE + 0x1E00 + 0xFC))
+
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS                0
 #endif

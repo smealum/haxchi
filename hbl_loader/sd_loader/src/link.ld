@@ -11,16 +11,13 @@ SECTIONS {
 		KEEP(*(.kernel_code*));
 	}
 	.data : {
-		*(.rodata) *(.rodata.*);
+		*(.rodata*);
 		*(.data*);
 		*(.bss*);
-	}
-	.rodata1 : {
-		*(.rodata1) *(.rodata1.*)
 	}
 	/DISCARD/ : {
 		*(*);
 	}
 }
 
-ASSERT((SIZEOF(.text) + SIZEOF(.data) + SIZEOF(.rodata1)) <= 0x1300, "Memory overlapping with main elf.");
+ASSERT((SIZEOF(.text) + SIZEOF(.data)) <= 0x1300, "Memory overlapping with main elf.");
