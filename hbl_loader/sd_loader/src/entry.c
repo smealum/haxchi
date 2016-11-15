@@ -272,8 +272,10 @@ static int LiWaitOneChunk(unsigned int * iRemainingBytes, const char *filename, 
             if((mapOffset + blockSize) >= mem_area->size)
             {
                 blockSize = mem_area->size - mapOffset;
+                //! this value is incremented later by blockSize, so set it to -blockSize for it to be 0 after copy
+                //! it makes smaller code then if(mapOffset == mem_area->size) after copy
+                mapOffset = -blockSize;
                 mem_area = mem_area->next;
-                mapOffset = 0;
             }
 
             SC0x25_KernelCopyData(load_addressPhys + rpxBlockPos, address, blockSize);
@@ -445,6 +447,26 @@ static int LoadFileToMem(private_data_t *private_data, const char *filepath, uns
     return success;
 }
 
+static void setup_patches(private_data_t *private_data)
+{
+    //! setup necessary syscalls and hooks for HBL
+    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl1 + (0x25 * 4)), (unsigned int)KernelCopyData);
+    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl2 + (0x25 * 4)), (unsigned int)KernelCopyData);
+    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl3 + (0x25 * 4)), (unsigned int)KernelCopyData);
+    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl4 + (0x25 * 4)), (unsigned int)KernelCopyData);
+    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl5 + (0x25 * 4)), (unsigned int)KernelCopyData);
+
+    //! store physical address for later use
+    addrphys_LiWaitOneChunk = private_data->OSEffectiveToPhysical((void*)OS_SPECIFICS->addr_LiWaitOneChunk);
+
+    u32 addr_my_PrepareTitle_hook = ((u32)my_PrepareTitle_hook) | 0x48000003;
+    DCFlushRange(&addr_my_PrepareTitle_hook, 4);
+
+    //! create our copy syscall
+    SC0x25_KernelCopyData(OS_SPECIFICS->addr_PrepareTitle_hook, private_data->OSEffectiveToPhysical(&addr_my_PrepareTitle_hook), 4);
+
+}
+
 static unsigned int load_elf_image (private_data_t *private_data, unsigned char *elfstart)
 {
 	Elf32_Ehdr *ehdr;
@@ -500,22 +522,6 @@ static unsigned int load_elf_image (private_data_t *private_data, unsigned char 
         }
     }
 
-    //! setup hooks
-    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl1 + (0x25 * 4)), (unsigned int)KernelCopyData);
-    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl2 + (0x25 * 4)), (unsigned int)KernelCopyData);
-    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl3 + (0x25 * 4)), (unsigned int)KernelCopyData);
-    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl4 + (0x25 * 4)), (unsigned int)KernelCopyData);
-    kern_write((void*)(OS_SPECIFICS->addr_KernSyscallTbl5 + (0x25 * 4)), (unsigned int)KernelCopyData);
-
-    //! store physical address for later use
-    addrphys_LiWaitOneChunk = private_data->OSEffectiveToPhysical((void*)OS_SPECIFICS->addr_LiWaitOneChunk);
-
-    u32 addr_my_PrepareTitle_hook = ((u32)my_PrepareTitle_hook) | 0x48000003;
-    DCFlushRange(&addr_my_PrepareTitle_hook, 4);
-
-    //! create our copy syscall
-    SC0x25_KernelCopyData(OS_SPECIFICS->addr_PrepareTitle_hook, private_data->OSEffectiveToPhysical(&addr_my_PrepareTitle_hook), 4);
-
 	return ehdr->e_entry;
 }
 
@@ -568,7 +574,7 @@ static const char *HBL_ELF_PATH = "/vol/external01/wiiu/apps/homebrew_launcher/h
 
 unsigned int _main(int argc, char **argv)
 {
-	private_data_t private_data;
+    private_data_t private_data;
 
     if(MAIN_ENTRY_ADDR != 0xC001C0DE)
     {
@@ -593,6 +599,9 @@ unsigned int _main(int argc, char **argv)
 
             if(MAIN_ENTRY_ADDR == 0xDEADC0DE || MAIN_ENTRY_ADDR == 0)
             {
+                //! setup necessary syscalls and hooks for HBL before launching it
+                setup_patches(&private_data);
+
                 if(HBL_CHANNEL)
                 {
                     break;
@@ -644,6 +653,7 @@ unsigned int _main(int argc, char **argv)
     }
 
     unsigned int entry = *(unsigned int*)OS_SPECIFICS->addr_OSTitle_main_entry;
+
     //! if an application was an RPX launch then launch HBL again after return
     /*if(MAIN_ENTRY_ADDR == 0xC001C0DE)
     {

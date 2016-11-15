@@ -1,14 +1,14 @@
 
 ; game stack return address
 HAX_TARGET_ADDRESS equ (0x1079B52C)
-
+; application memory pointer
 HACHI_APPLICATION_PTR equ (0x10C91938)
-
+; arm9 rom location address
 ARM9_ROM_LOCATION equ (0x16444200)
-ARM7_ROM_MEM2_START equ (0xEBBBBE00)
 
 ; constants for position calcs
 RPX_OFFSET equ (0x01800000)
+ARM7_ROM_MEM2_START equ (0xF0000000 - ARM9_ROM_LOCATION + 0x12000000)
 
 ; rop-gadgets part 1 (used for all sorts of different things)
 LMW_R21R1xC_LWZ_R0R1x3C_MTLR_R0_ADDI_R1_x38_BLR equ (RPX_OFFSET + 0x02206F7C)

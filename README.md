@@ -29,6 +29,12 @@ make sure to replace YOUR_GAME_TITLE_ID with one of the following:
 10179A00 - JPN Brain Age  
 10179B00 - US Brain Age  
 10179C00 - PAL Brain Training  
+10195600 - JPN Mario Kart DS  
+10195700 - US Mario Kart DS  
+10195800 - PAL Mario Kart DS  
+10195900 - JPN New Super Mario Bros  
+10195A00 - US New Super Mario Bros  
+10195B00 - PAL New Super Mario Bros  
 10198800 - JPN Yoshi's Island DS  
 10198900 - US Yoshi's Island DS  
 10198A00 - PAL Yoshi's Island DS  
@@ -38,6 +44,12 @@ make sure to replace YOUR_GAME_TITLE_ID with one of the following:
 101A5500 - JPN Kirby Squeak Squad  
 101A5600 - US Kirby Squeak Squad  
 101A5700 - PAL Kirby Mouse Attack  
+101AC000 - JPN Star Fox Command  
+101AC100 - US Star Fox Command  
+101AC200 - PAL Star Fox Command  
+101C3600 - JPN Zelda Phantom Hourglass  
+101C3700 - US Zelda Phantom Hourglass  
+101C3800 - PAL Zelda Phantom Hourglass  
 
 a config.txt can look like this for example:
 ```

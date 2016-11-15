@@ -249,9 +249,8 @@ fileEnd:
 	}
 	if(pBuffer)
 		MEMFreeToDefaultHeap(pBuffer);
-	if(hbl)
-		*(int*)0xF5E700FC = 0; //set SD_LOADER_FORCE_HBL to 0
-	DCStoreRange((void*)0xF5E70000,0xA0);
+
+	DCStoreRange((void*)0xF5E70000,0x100);
 	uint32_t entry = (hbl ? 0x01800000 : 0x0180C000);
 	return entry;
 }
