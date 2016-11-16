@@ -6,7 +6,8 @@ else
 	ZIP = zip
 endif
 
-all: setup brainage kirby mariokartds sfcommand sm64ds yoshids zeldaph brainage.zip kirby.zip mariokartds.zip sfcommand.zip sm64ds.zip yoshids.zip zeldaph.zip
+all: setup brainage kirby mariokartds sfcommand sm64ds yoshids zeldaph brainage.zip kirby.zip mariokartds.zip \
+	sfcommand.zip sm64ds.zip yoshids.zip yoshitouchandgo.zip zeldaph.zip
 
 brainage: setup_brainage brainage.nds
 
@@ -59,6 +60,7 @@ brainage.nds:
 	@armips haxchi_rop.s
 	@armips haxchi.s
 	@mv rom.nds brainage.nds
+	@cp brainage.nds yoshitouchandgo.nds
 
 kirby.nds:
 	@armips haxchi_rop.s
@@ -94,6 +96,7 @@ zeldaph.nds:
 
 brainage.zip:
 	$(ZIP) -JXjq9 brainage.zip brainage.nds
+	$(ZIP) -JXjq9 yoshitouchandgo.zip yoshitouchandgo.nds
 
 kirby.zip:
 	$(ZIP) -JXjq9 kirby.zip kirby.nds
@@ -117,7 +120,8 @@ zeldaph.zip:
 
 clean:
 	@rm -f *.bin defines.s brainage.nds brainage.zip kirby.nds kirby.zip mariokartds.nds mariokartds.zip newsmb.nds newsmb.zip \
-		sfcommand.nds sfcommand.zip sm64ds.nds sm64ds.zip wwtouched.nds wwtouched.zip yoshids.nds yoshids.zip zeldaph.nds zeldaph.zip
+		sfcommand.nds sfcommand.zip sm64ds.nds sm64ds.zip wwtouched.nds wwtouched.zip yoshids.nds yoshids.zip yoshitouchandgo.nds yoshitouchandgo.zip \
+		zeldaph.nds zeldaph.zip
 	@cd option_select && make clean && cd ..
 	@cd hbl_loader && make clean && cd ..
 	@cd cfw_booter && make clean && cd ..

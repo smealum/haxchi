@@ -29,6 +29,9 @@ make sure to replace YOUR_GAME_TITLE_ID with one of the following:
 10179A00 - JPN Brain Age  
 10179B00 - US Brain Age  
 10179C00 - PAL Brain Training  
+10179D00 - JPN Yoshi Touch and Go  
+10179E00 - US Yoshi Touch and Go  
+10179F00 - PAL Yoshi Touch and Go  
 10195600 - JPN Mario Kart DS  
 10195700 - US Mario Kart DS  
 10195800 - PAL Mario Kart DS  
