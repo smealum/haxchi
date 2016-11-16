@@ -26,36 +26,19 @@ and for the title being installed to USB you do the following:
 ```
 
 make sure to replace YOUR_GAME_TITLE_ID with one of the following:  
-10179A00 - JPN Brain Age  
-10179B00 - US Brain Age  
-10179C00 - PAL Brain Training  
-10179D00 - JPN Yoshi Touch and Go  
-10179E00 - US Yoshi Touch and Go  
-10179F00 - PAL Yoshi Touch and Go  
-10195600 - JPN Mario Kart DS  
-10195700 - US Mario Kart DS  
-10195800 - PAL Mario Kart DS  
-10195900 - JPN New Super Mario Bros  
-10195A00 - US New Super Mario Bros  
-10195B00 - PAL New Super Mario Bros  
-10198800 - JPN Yoshi's Island DS  
-10198900 - US Yoshi's Island DS  
-10198A00 - PAL Yoshi's Island DS  
-101A1E00 - JPN WarioWare: Touched  
-101A1F00 - US WarioWare: Touched  
-101A2000 - PAL WarioWare: Touched  
-101A5500 - JPN Kirby Squeak Squad  
-101A5600 - US Kirby Squeak Squad  
-101A5700 - PAL Kirby Mouse Attack  
-101AC000 - JPN Star Fox Command  
-101AC100 - US Star Fox Command  
-101AC200 - PAL Star Fox Command  
-101C3300 - JPN Super Mario 64 DS  
-101C3400 - US Super Mario 64 DS  
-101C3500 - PAL Super Mario 64 DS  
-101C3600 - JPN Zelda Phantom Hourglass  
-101C3700 - US Zelda Phantom Hourglass  
-101C3800 - PAL Zelda Phantom Hourglass  
+
+| Game | JPN | US | PAL |
+|---|:---:|:---:|:---:|
+|Brain Age(Traing)|10179A00|10179B00|10179C00|
+|Yoshi Touch and Go|10179D00|10179E00|10179F00|
+|Mario Kart DS|10195600|10195700|10195800|
+|New Super Mario Bros|10195900|10195A00|10195B00|
+|Yoshi's Island DS|10198800|10198900|10198A00|
+|WarioWar: Touched|101A1E00|101A1F00|101A2000|
+|Kirby Squeak Squad(Mouse Attack)|101A5500|101A5600|101A5700|
+|Star Fox Command|101AC000|101AC100|101AC200|
+|Super Mario 64 DS|101C3300|101C3400|101C3500|
+|Zelda Phantom Hourglass|101C3600|101C3700|101C3800|
 
 a config.txt can look like this for example:
 ```
@@ -76,4 +59,3 @@ please note though that if you want to load a fw.img the name HAS to be named fw
 ## credit
 
 smea, plutoo, yellows8, naehrwert, derrek, FIX94 and dimok
-
