@@ -6,7 +6,7 @@ else
 	ZIP = zip
 endif
 
-all: setup brainage kirby mariokartds sfcommand yoshids zeldaph brainage.zip kirby.zip mariokartds.zip sfcommand.zip yoshids.zip zeldaph.zip
+all: setup brainage kirby mariokartds sfcommand sm64ds yoshids zeldaph brainage.zip kirby.zip mariokartds.zip sfcommand.zip sm64ds.zip yoshids.zip zeldaph.zip
 
 brainage: setup_brainage brainage.nds
 
@@ -15,6 +15,8 @@ kirby: setup_kirby kirby.nds
 mariokartds: setup_mariokartds mariokartds.nds
 
 sfcommand: setup_sfcommand sfcommand.nds
+
+sm64ds: setup_sm64ds sm64ds.nds
 
 yoshids: setup_yoshids yoshids.nds
 
@@ -40,6 +42,10 @@ setup_mariokartds:
 setup_sfcommand:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
 	@cp -f sfcommand_defs.s defines.s
+
+setup_sm64ds:
+	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@cp -f sm64ds_defs.s defines.s
 
 setup_yoshids:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
@@ -70,6 +76,11 @@ sfcommand.nds:
 	@armips haxchi.s
 	@mv rom.nds sfcommand.nds
 
+sm64ds.nds:
+	@armips haxchi_rop.s
+	@armips haxchi.s
+	@mv rom.nds sm64ds.nds
+
 yoshids.nds:
 	@armips haxchi_rop.s
 	@armips haxchi.s
@@ -94,6 +105,9 @@ mariokartds.zip:
 sfcommand.zip:
 	$(ZIP) -JXjq9 sfcommand.zip sfcommand.nds
 
+sm64ds.zip:
+	$(ZIP) -JXjq9 sm64ds.zip sm64ds.nds
+
 yoshids.zip:
 	$(ZIP) -JXjq9 yoshids.zip yoshids.nds
 	$(ZIP) -JXjq9 wwtouched.zip wwtouched.nds
@@ -102,8 +116,8 @@ zeldaph.zip:
 	$(ZIP) -JXjq9 zeldaph.zip zeldaph.nds
 
 clean:
-	@rm -f *.bin defines.s brainage.nds brainage.zip kirby.nds kirby.zip mariokartds.nds mariokartds.zip \
-		newsmb.nds newsmb.zip sfcommand.nds sfcommand.zip wwtouched.nds wwtouched.zip yoshids.nds yoshids.zip zeldaph.nds zeldaph.zip
+	@rm -f *.bin defines.s brainage.nds brainage.zip kirby.nds kirby.zip mariokartds.nds mariokartds.zip newsmb.nds newsmb.zip \
+		sfcommand.nds sfcommand.zip sm64ds.nds sm64ds.zip wwtouched.nds wwtouched.zip yoshids.nds yoshids.zip zeldaph.nds zeldaph.zip
 	@cd option_select && make clean && cd ..
 	@cd hbl_loader && make clean && cd ..
 	@cd cfw_booter && make clean && cd ..

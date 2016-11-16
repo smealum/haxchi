@@ -47,6 +47,9 @@ make sure to replace YOUR_GAME_TITLE_ID with one of the following:
 101AC000 - JPN Star Fox Command  
 101AC100 - US Star Fox Command  
 101AC200 - PAL Star Fox Command  
+101C3300 - JPN Super Mario 64 DS  
+101C3400 - US Super Mario 64 DS  
+101C3500 - PAL Super Mario 64 DS  
 101C3600 - JPN Zelda Phantom Hourglass  
 101C3700 - US Zelda Phantom Hourglass  
 101C3800 - PAL Zelda Phantom Hourglass  
