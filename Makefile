@@ -6,14 +6,16 @@ else
 	ZIP = zip
 endif
 
-all: setup brainage kirby mariokartds sfcommand sm64ds yoshids zeldaph brainage.zip kirby.zip mariokartds.zip \
-	sfcommand.zip sm64ds.zip yoshids.zip yoshitouchandgo.zip zeldaph.zip
+all: setup brainage kirby mariokartds newsmb_eur sfcommand sm64ds yoshids zeldaph brainage.zip kirby.zip mariokartds.zip \
+	newsmb_eur.zip sfcommand.zip sm64ds.zip yoshids.zip yoshitouchandgo.zip zeldaph.zip
 
 brainage: setup_brainage brainage.nds
 
 kirby: setup_kirby kirby.nds
 
 mariokartds: setup_mariokartds mariokartds.nds
+
+newsmb_eur: setup_newsmb_eur newsmb_eur.nds
 
 sfcommand: setup_sfcommand sfcommand.nds
 
@@ -35,6 +37,10 @@ setup_brainage:
 setup_kirby:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
 	@cp -f kirby_defs.s defines.s
+
+setup_newsmb_eur:
+	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@cp -f newsmb_eur_defs.s defines.s
 
 setup_mariokartds:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
@@ -66,6 +72,11 @@ kirby.nds:
 	@armips haxchi_rop.s
 	@armips haxchi.s
 	@mv rom.nds kirby.nds
+
+newsmb_eur.nds:
+	@armips haxchi_rop.s
+	@armips haxchi.s
+	@mv rom.nds newsmb_eur.nds
 
 mariokartds.nds:
 	@armips haxchi_rop.s
@@ -101,6 +112,9 @@ brainage.zip:
 kirby.zip:
 	$(ZIP) -JXjq9 kirby.zip kirby.nds
 
+newsmb_eur.zip:
+	$(ZIP) -JXjq9 newsmb_eur.zip newsmb_eur.nds
+
 mariokartds.zip:
 	$(ZIP) -JXjq9 mariokartds.zip mariokartds.nds
 	$(ZIP) -JXjq9 newsmb.zip newsmb.nds
@@ -119,7 +133,7 @@ zeldaph.zip:
 	$(ZIP) -JXjq9 zeldaph.zip zeldaph.nds
 
 clean:
-	@rm -f *.bin defines.s brainage.nds brainage.zip kirby.nds kirby.zip mariokartds.nds mariokartds.zip newsmb.nds newsmb.zip \
+	@rm -f *.bin defines.s brainage.nds brainage.zip kirby.nds kirby.zip mariokartds.nds mariokartds.zip newsmb.nds newsmb.zip newsmb_eur.nds newsmb_eur.zip \
 		sfcommand.nds sfcommand.zip sm64ds.nds sm64ds.zip wwtouched.nds wwtouched.zip yoshids.nds yoshids.zip yoshitouchandgo.nds yoshitouchandgo.zip \
 		zeldaph.nds zeldaph.zip
 	@cd option_select && make clean && cd ..
