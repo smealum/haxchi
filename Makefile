@@ -6,9 +6,9 @@ else
 	ZIP = zip
 endif
 
-all: setup brainage dkjclimber kirby kirbymassattack mariokartds masterofdisguise newsmb_eur partnersintime sfcommand sm64ds yoshids zeldaph \
+all: setup brainage dkjclimber kirby kirbymassattack mariokartds masterofdisguise newsmb_eur partnersintime sfcommand sm64ds yoshids zeldaph zeldast \
 	brainage.zip dkjclimber.zip kirby.zip kirbymassattack.zip mariokartds.zip masterofdisguise.zip newsmb_eur.zip partnersintime.zip \
-	sfcommand.zip sm64ds.zip yoshids.zip yoshitouchandgo.zip zeldaph.zip
+	sfcommand.zip sm64ds.zip yoshids.zip yoshitouchandgo.zip zeldaph.zip zeldast.zip
 
 brainage: setup_brainage brainage.nds
 
@@ -33,6 +33,8 @@ sm64ds: setup_sm64ds sm64ds.nds
 yoshids: setup_yoshids yoshids.nds
 
 zeldaph: setup_zeldaph zeldaph.nds
+
+zeldast: setup_zeldast zeldast.nds
 
 setup:
 	@cd option_select && make && cd ..
@@ -86,6 +88,10 @@ setup_yoshids:
 setup_zeldaph:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
 	@cp -f zeldaph_defs.s defines.s
+
+setup_zeldast:
+	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@cp -f zeldast_defs.s defines.s
 
 brainage.nds:
 	@armips haxchi_rop.s
@@ -152,6 +158,11 @@ zeldaph.nds:
 	@armips haxchi.s
 	@mv rom.nds zeldaph.nds
 
+zeldast.nds:
+	@armips haxchi_rop.s
+	@armips haxchi.s
+	@mv rom.nds zeldast.nds
+
 brainage.zip:
 	$(ZIP) -JXjq9 brainage.zip brainage.nds
 	$(ZIP) -JXjq9 yoshitouchandgo.zip yoshitouchandgo.nds
@@ -192,6 +203,9 @@ yoshids.zip:
 
 zeldaph.zip:
 	$(ZIP) -JXjq9 zeldaph.zip zeldaph.nds
+
+zeldast.zip:
+	$(ZIP) -JXjq9 zeldast.zip zeldast.nds
 
 clean:
 	@rm -f *.bin *.nds *.zip defines.s

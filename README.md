@@ -42,6 +42,7 @@ make sure to replace YOUR_GAME_TITLE_ID with one of the following:
 |Wario Master of Disguise|101ABD00|101ABE00|101ABF00|
 |Star Fox Command|101AC000|101AC100|101AC200|
 |Kirby Canvas Curse|101B8800|101B8900|101B8A00|
+|Zelda Spirit Tracks|101B8B00|101B8C00|101B8D00|
 |Super Mario 64 DS|101C3300|101C3400|101C3500|
 |Zelda Phantom Hourglass|101C3600|101C3700|101C3800|
 |Kirby Mass Attack|101C8600|101C8700|101C8800|
