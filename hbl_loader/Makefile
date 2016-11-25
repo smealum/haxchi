@@ -6,7 +6,7 @@ CFLAGS = -std=gnu99 -O3 -nostdinc -fno-builtin
 ASFLAGS = -mregnames -x assembler-with-cpp
 LD = $(PREFIX)ld
 OBJCOPY = $(PREFIX)objcopy
-LDFLAGS=-Ttext 1800000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/4.8.2 -lgcc
+LDFLAGS=-Ttext 1800000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/6.2.0 -lgcc
 OBJDUMP ?= $(PREFIX)objdump
 project	:=	.
 root	:=	$(CURDIR)

@@ -2,11 +2,11 @@ PATH := $(DEVKITPPC)/bin:$(PATH)
 PREFIX ?= powerpc-eabi-
 CC = $(PREFIX)gcc
 AS = $(PREFIX)gcc
-CFLAGS = -std=gnu99 -O3 -nostdinc -fno-builtin -I$(DEVKITPPC)/lib/gcc/powerpc-eabi/4.8.2/include -I$(DEVKITPPC)/powerpc-eabi/include
+CFLAGS = -std=gnu99 -O3 -nostdinc -fno-builtin -I$(DEVKITPPC)/lib/gcc/powerpc-eabi/6.2.0/include -I$(DEVKITPPC)/powerpc-eabi/include
 ASFLAGS = -mregnames -x assembler-with-cpp
 LD = $(PREFIX)ld
 OBJCOPY = $(PREFIX)objcopy
-LDFLAGS=-Ttext 1808000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/4.8.2 -L$(DEVKITPPC)/powerpc-eabi/lib -lgcc -lc
+LDFLAGS=-Ttext 1808000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/6.2.0 -L$(DEVKITPPC)/powerpc-eabi/lib -lgcc -lc
 OBJDUMP ?= $(PREFIX)objdump
 project	:=	.
 root	:=	$(CURDIR)
