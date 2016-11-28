@@ -40,7 +40,7 @@ int MCPHookOpen()
 	IOS_IoctlAsync(mcp_hook_fd, 0x62, (void*)0, 0, (void*)0, 0, someFunc, (void*)0);
 	//let wupserver start up
 	sleep(1);
-	if(IOSUHAX_Open() < 0)
+	if(IOSUHAX_Open("/dev/mcp") < 0)
 		return -1;
 	return 0;
 }
@@ -244,7 +244,7 @@ int Menu_Main(void)
 		{
 			OSScreenClearBufferEx(0, 0);
 			OSScreenClearBufferEx(1, 0);
-			println_noflip(0,"Haxchi v2.0 by FIX94");
+			println_noflip(0,"Haxchi v2.0u1 by FIX94");
 			println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 			println_noflip(2,"Please select the game for the Installation from the list below.");
 			// Starting position.
@@ -266,7 +266,7 @@ int Menu_Main(void)
 	{
 		OSScreenClearBufferEx(0, 0);
 		OSScreenClearBufferEx(1, 0);
-		println_noflip(0,"Haxchi v2.0 by FIX94");
+		println_noflip(0,"Haxchi v2.0u1 by FIX94");
 		println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 		println_noflip(2,"You have selected the following game:");
 		println_noflip(3,SelectedGame->name);
@@ -330,7 +330,7 @@ int Menu_Main(void)
 	sprintf(path,"%s/content/0010/rom.zip",SelectedGame->path);
 	if(IOSUHAX_FSA_OpenFile(fsaFd, path, "rb", &mlcFd) < 0)
 	{
-		println(line++,"No existing rom.zip not found in the game!");
+		println(line++,"No already existing rom.zip found in the game!");
 		println(line++,"Make sure to update your DS title and try again.");
 		goto prgEnd;
 	}

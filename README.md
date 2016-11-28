@@ -29,6 +29,10 @@ The following games right now are supported by the installer:
 |Zelda Phantom Hourglass|101C3600|101C3700|101C3800|
 |Kirby Mass Attack|101C8600|101C8700|101C8800|
 
+## Dependencies
+
+To properly compile this project yourself you will need the latest libiosuhax from dimok789's github.  
+
 ## credit
 
 smea, plutoo, yellows8, naehrwert, derrek, FIX94 and dimok
