@@ -244,7 +244,7 @@ int Menu_Main(void)
 		{
 			OSScreenClearBufferEx(0, 0);
 			OSScreenClearBufferEx(1, 0);
-			println_noflip(0,"Haxchi v2.0u1 by FIX94");
+			println_noflip(0,"Haxchi v2.1 by FIX94");
 			println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 			println_noflip(2,"Please select the game for the Installation from the list below.");
 			// Starting position.
@@ -266,7 +266,7 @@ int Menu_Main(void)
 	{
 		OSScreenClearBufferEx(0, 0);
 		OSScreenClearBufferEx(1, 0);
-		println_noflip(0,"Haxchi v2.0u1 by FIX94");
+		println_noflip(0,"Haxchi v2.1 by FIX94");
 		println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 		println_noflip(2,"You have selected the following game:");
 		println_noflip(3,SelectedGame->name);
@@ -415,23 +415,26 @@ int Menu_Main(void)
 			xmlDocDumpFormatMemoryEnc(doc, &newXml, &newSize, "utf-8", 0);
 			xmlFreeDoc(doc);
 			free(metaBuf);
-			//libxml2 adds in extra \n at the end
-			if(newXml != NULL && newSize > 0 && newXml[newSize-1] == '\n')
+			if(newXml != NULL && newSize > 0)
 			{
-				newXml[newSize-1] = '\0';
-				newSize--;
-			}
-			//write back to nand
-			if(IOSUHAX_FSA_OpenFile(fsaFd, path, "wb", &mlcFd) >= 0)
-			{
-				println(line++,"Changing game title...");
-				//UTF-8 BOM
-				char bom[3] = { 0xEF, 0xBB, 0xBF };
-				if(memcmp(newXml, bom, 3) != 0)
-					fsa_write(fsaFd, mlcFd, bom, 0x03);
-				fsa_write(fsaFd, mlcFd, newXml, newSize);
-				IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
-				mlcFd = -1;
+				//libxml2 adds in extra \n at the end
+				if(newXml[newSize-1] == '\n')
+				{
+					newXml[newSize-1] = '\0';
+					newSize--;
+				}
+				//write back to nand
+				if(IOSUHAX_FSA_OpenFile(fsaFd, path, "wb", &mlcFd) >= 0)
+				{
+					println(line++,"Changing game title...");
+					//UTF-8 BOM
+					char bom[3] = { 0xEF, 0xBB, 0xBF };
+					if(memcmp(newXml, bom, 3) != 0)
+						fsa_write(fsaFd, mlcFd, bom, 0x03);
+					fsa_write(fsaFd, mlcFd, newXml, newSize);
+					IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
+					mlcFd = -1;
+				}
 				free(newXml);
 			}
 		}

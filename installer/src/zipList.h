@@ -13,6 +13,7 @@ extern u8 masterofdisguise_zip[]; extern u32 masterofdisguise_zip_size;
 extern u8 newsmb_zip[]; extern u32 newsmb_zip_size;
 extern u8 newsmb_eur_zip[]; extern u32 newsmb_eur_zip_size;
 extern u8 partnersintime_zip[]; extern u32 partnersintime_zip_size;
+extern u8 shadowsofalmia_zip[]; extern u32 shadowsofalmia_zip_size;
 extern u8 sfcommand_zip[]; extern u32 sfcommand_zip_size;
 extern u8 sm64ds_zip[]; extern u32 sm64ds_zip_size;
 extern u8 wwtouched_zip[]; extern u32 wwtouched_zip_size;

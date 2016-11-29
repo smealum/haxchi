@@ -162,6 +162,7 @@ zeldast.nds:
 	@armips haxchi_rop.s
 	@armips haxchi.s
 	@mv rom.nds zeldast.nds
+	@cp zeldast.nds shadowsofalmia.nds
 
 brainage.zip:
 	$(ZIP) -JXjq9 ../installer/data/brainage.zip brainage.nds
@@ -206,6 +207,7 @@ zeldaph.zip:
 
 zeldast.zip:
 	$(ZIP) -JXjq9 ../installer/data/zeldast.zip zeldast.nds
+	$(ZIP) -JXjq9 ../installer/data/shadowsofalmia.zip shadowsofalmia.nds
 
 clean:
 	@rm -f *.bin *.nds ../installer/data/*.zip defines.s

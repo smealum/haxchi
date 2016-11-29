@@ -28,6 +28,7 @@ The following games right now are supported by the installer:
 |Super Mario 64 DS|101C3300|101C3400|101C3500|
 |Zelda Phantom Hourglass|101C3600|101C3700|101C3800|
 |Kirby Mass Attack|101C8600|101C8700|101C8800|
+|Pokemon Ranger: Shadows of Almia|101E0F00|101E1000|101E1100|
 
 ## Dependencies
 

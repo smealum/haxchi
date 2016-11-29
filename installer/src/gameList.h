@@ -79,6 +79,10 @@ gList_t GameList[] = {
 	{ 0x101C8600, "Kirby Mass Attack [JPN]", kirbymassattack_zip, &kirbymassattack_zip_size },
 	{ 0x101C8700, "Kirby Mass Attack [USA]", kirbymassattack_zip, &kirbymassattack_zip_size },
 	{ 0x101C8800, "Kirby Mass Attack [PAL]", kirbymassattack_zip, &kirbymassattack_zip_size },
+
+	{ 0x101E0F00, "Pokemon Ranger: Shadows of Almia [JPN]", shadowsofalmia_zip, &shadowsofalmia_zip_size },
+	{ 0x101E1000, "Pokemon Ranger: Shadows of Almia [USA]", shadowsofalmia_zip, &shadowsofalmia_zip_size },
+	{ 0x101E1100, "Pokemon Ranger: Shadows of Almia [PAL]", shadowsofalmia_zip, &shadowsofalmia_zip_size },
 };
 
 static const int GameListSize = sizeof(GameList) / sizeof(gList_t);
