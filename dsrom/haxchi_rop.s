@@ -232,7 +232,7 @@ rop_start:
 		call_func OSCODEGEN_SWITCHSECMODE, 0x1, 0x0, 0x0, 0x0
 		call_func IC_INVALIDATERANGE, HBL_LOADER_ADR, 0xE000, 0x0, 0x0
 
-		; execute hbl_loader in codegen
+		; execute option_select in codegen
 		.word SELECTOR_ADDRESS
 	core0rop_end:
 

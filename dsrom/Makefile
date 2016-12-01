@@ -6,13 +6,18 @@ else
 	ZIP = zip
 endif
 
-all: setup brainage dkjclimber kirby kirbymassattack mariokartds masterofdisguise newsmb_eur partnersintime sfcommand sm64ds yoshids zeldaph zeldast \
-	brainage.zip dkjclimber.zip kirby.zip kirbymassattack.zip mariokartds.zip masterofdisguise.zip newsmb_eur.zip partnersintime.zip \
-	sfcommand.zip sm64ds.zip yoshids.zip zeldaph.zip zeldast.zip
+all: setup animalcrossing brainage dkjclimber guardiansigns kirby kirbymassattack mariokartds masterofdisguise newsmb_eur partnersintime \
+	pokemonranger sfcommand sm64ds yoshids zeldaph zeldast \
+	animalcrossing.zip brainage.zip dkjclimber.zip guardiansigns.zip kirby.zip kirbymassattack.zip mariokartds.zip masterofdisguise.zip \
+	newsmb_eur.zip partnersintime.zip pokemonranger.zip sfcommand.zip sm64ds.zip yoshids.zip zeldaph.zip zeldast.zip
+
+animalcrossing: setup_animalcrossing animalcrossing.nds
 
 brainage: setup_brainage brainage.nds
 
 dkjclimber: setup_dkjclimber dkjclimber.nds
+
+guardiansigns: setup_guardiansigns guardiansigns.nds
 
 kirby: setup_kirby kirby.nds
 
@@ -25,6 +30,8 @@ masterofdisguise: setup_masterofdisguise masterofdisguise.nds
 newsmb_eur: setup_newsmb_eur newsmb_eur.nds
 
 partnersintime: setup_partnersintime partnersintime.nds
+
+pokemonranger: setup_pokemonranger pokemonranger.nds
 
 sfcommand: setup_sfcommand sfcommand.nds
 
@@ -41,6 +48,10 @@ setup:
 	@cd hbl_loader && make && cd ..
 	@cd cfw_booter && make && cd ..
 
+setup_animalcrossing:
+	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@cp -f animalcrossing_defs.s defines.s
+
 setup_brainage:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
 	@cp -f brainage_defs.s defines.s
@@ -48,6 +59,10 @@ setup_brainage:
 setup_dkjclimber:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
 	@cp -f dkjclimber_defs.s defines.s
+
+setup_guardiansigns:
+	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@cp -f guardiansigns_defs.s defines.s
 
 setup_kirby:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
@@ -68,6 +83,10 @@ setup_masterofdisguise:
 setup_newsmb_eur:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
 	@cp -f newsmb_eur_defs.s defines.s
+
+setup_pokemonranger:
+	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@cp -f pokemonranger_defs.s defines.s
 
 setup_partnersintime:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
@@ -93,6 +112,11 @@ setup_zeldast:
 	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
 	@cp -f zeldast_defs.s defines.s
 
+animalcrossing.nds:
+	@armips haxchi_rop.s
+	@armips haxchi.s
+	@mv rom.nds animalcrossing.nds
+
 brainage.nds:
 	@armips haxchi_rop.s
 	@armips haxchi.s
@@ -103,6 +127,11 @@ dkjclimber.nds:
 	@armips haxchi_rop.s
 	@armips haxchi.s
 	@mv rom.nds dkjclimber.nds
+
+guardiansigns.nds:
+	@armips haxchi_rop.s
+	@armips haxchi.s
+	@mv rom.nds guardiansigns.nds
 
 kirby.nds:
 	@armips haxchi_rop.s
@@ -129,6 +158,11 @@ newsmb_eur.nds:
 	@armips haxchi_rop.s
 	@armips haxchi.s
 	@mv rom.nds newsmb_eur.nds
+
+pokemonranger.nds:
+	@armips haxchi_rop.s
+	@armips haxchi.s
+	@mv rom.nds pokemonranger.nds
 
 partnersintime.nds:
 	@armips haxchi_rop.s
@@ -162,7 +196,11 @@ zeldast.nds:
 	@armips haxchi_rop.s
 	@armips haxchi.s
 	@mv rom.nds zeldast.nds
+	@cp zeldast.nds explorersofsky.nds
 	@cp zeldast.nds shadowsofalmia.nds
+
+animalcrossing.zip:
+	$(ZIP) -JXjq9 ../installer/data/animalcrossing.zip animalcrossing.nds
 
 brainage.zip:
 	$(ZIP) -JXjq9 ../installer/data/brainage.zip brainage.nds
@@ -170,6 +208,9 @@ brainage.zip:
 
 dkjclimber.zip:
 	$(ZIP) -JXjq9 ../installer/data/dkjclimber.zip dkjclimber.nds
+
+guardiansigns.zip:
+	$(ZIP) -JXjq9 ../installer/data/guardiansigns.zip guardiansigns.nds
 
 kirby.zip:
 	$(ZIP) -JXjq9 ../installer/data/kirby.zip kirby.nds
@@ -186,6 +227,9 @@ masterofdisguise.zip:
 
 newsmb_eur.zip:
 	$(ZIP) -JXjq9 ../installer/data/newsmb_eur.zip newsmb_eur.nds
+
+pokemonranger.zip:
+	$(ZIP) -JXjq9 ../installer/data/pokemonranger.zip pokemonranger.nds
 
 partnersintime.zip:
 	$(ZIP) -JXjq9 ../installer/data/partnersintime.zip partnersintime.nds
@@ -207,6 +251,7 @@ zeldaph.zip:
 
 zeldast.zip:
 	$(ZIP) -JXjq9 ../installer/data/zeldast.zip zeldast.nds
+	$(ZIP) -JXjq9 ../installer/data/explorersofsky.zip explorersofsky.nds
 	$(ZIP) -JXjq9 ../installer/data/shadowsofalmia.zip shadowsofalmia.nds
 
 clean:

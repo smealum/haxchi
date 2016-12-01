@@ -1,6 +1,6 @@
 
 ; game stack return address
-HAX_TARGET_ADDRESS equ (0x1077865C)
+HAX_TARGET_ADDRESS equ (0x1077870C-0xB0)
 ; application memory pointer
 HACHI_APPLICATION_PTR equ (0x10A77038)
 ; arm9 rom location address

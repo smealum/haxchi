@@ -114,22 +114,33 @@ int fsa_write(int fsa_fd, int fd, void *buf, int len)
 	return done;
 }
 
+int availSort(const void *c1, const void *c2)
+{
+	return strcmp(((parsedList_t*)c1)->name,((parsedList_t*)c2)->name);
+}
+
+void printhdr_noflip()
+{
+	println_noflip(0,"Haxchi v2.2 by FIX94");
+	println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
+}
+
 int Menu_Main(void)
 {
 	InitOSFunctionPointers();
 	InitSysFunctionPointers();
 	InitVPadFunctionPointers();
-    VPADInit();
+	VPADInit();
 
-    // Init screen
-    OSScreenInit();
-    int screen_buf0_size = OSScreenGetBufferSizeEx(0);
-    int screen_buf1_size = OSScreenGetBufferSizeEx(1);
+	// Init screen
+	OSScreenInit();
+	int screen_buf0_size = OSScreenGetBufferSizeEx(0);
+	int screen_buf1_size = OSScreenGetBufferSizeEx(1);
 	uint8_t *screenBuffer = memalign(0x100, screen_buf0_size+screen_buf1_size);
-    OSScreenSetBufferEx(0, screenBuffer);
-    OSScreenSetBufferEx(1, (screenBuffer + screen_buf0_size));
-    OSScreenEnableEx(0, 1);
-    OSScreenEnableEx(1, 1);
+	OSScreenSetBufferEx(0, screenBuffer);
+	OSScreenSetBufferEx(1, (screenBuffer + screen_buf0_size));
+	OSScreenEnableEx(0, 1);
+	OSScreenEnableEx(1, 1);
 	OSScreenClearBufferEx(0, 0);
 	OSScreenClearBufferEx(1, 0);
 
@@ -167,16 +178,42 @@ int Menu_Main(void)
 		}
 	}
 
-    int vpadError = -1;
-    VPADData vpad;
+	int vpadError = -1;
+	VPADData vpad;
+
+	if(gAvailCnt == 0)
+	{
+		printhdr_noflip();
+		println_noflip(2,"No games found on NAND! Make sure that you have your DS VC");
+		println_noflip(3,"game installed on NAND and have all of your USB Devices");
+		println_noflip(4,"disconnected while installing Haxchi as it can lead to issues.");
+		println_noflip(5,"Press any button to return to Homebrew Launcher.");
+		OSScreenFlipBuffersEx(0);
+		OSScreenFlipBuffersEx(1);
+		while(1)
+		{
+			usleep(25000);
+			VPADRead(0, &vpad, 1, &vpadError);
+			if(vpadError != 0)
+				continue;
+			if(vpad.btns_d | vpad.btns_h)
+				break;
+		}
+		OSScreenEnableEx(0, 0);
+		OSScreenEnableEx(1, 0);
+		free(screenBuffer);
+		return EXIT_SUCCESS;
+	}
+
+	qsort(gAvail,gAvailCnt,sizeof(parsedList_t),availSort);
 
 	u32 redraw = 1;
 	s32 PosX = 0;
 	s32 ScrollX = 0;
 
 	s32 ListMax = gAvailCnt;
-	if( ListMax > 12 )
-		ListMax = 12;
+	if( ListMax > 13 )
+		ListMax = 13;
 
 	u32 UpHeld = 0, DownHeld = 0;
 	while(1)
@@ -244,8 +281,7 @@ int Menu_Main(void)
 		{
 			OSScreenClearBufferEx(0, 0);
 			OSScreenClearBufferEx(1, 0);
-			println_noflip(0,"Haxchi v2.1 by FIX94");
-			println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
+			printhdr_noflip();
 			println_noflip(2,"Please select the game for the Installation from the list below.");
 			// Starting position.
 			int gamelist_y = 4;
@@ -266,8 +302,7 @@ int Menu_Main(void)
 	{
 		OSScreenClearBufferEx(0, 0);
 		OSScreenClearBufferEx(1, 0);
-		println_noflip(0,"Haxchi v2.1 by FIX94");
-		println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
+		printhdr_noflip();
 		println_noflip(2,"You have selected the following game:");
 		println_noflip(3,SelectedGame->name);
 		println_noflip(4,"This will install Haxchi. To remove it you have to delete and");
@@ -555,10 +590,10 @@ prgEnd:
 	MCPHookClose();
 	sleep(5);
 	//will do IOSU reboot
-    OSForceFullRelaunch();
-    SYSLaunchMenu();
-    OSScreenEnableEx(0, 0);
-    OSScreenEnableEx(1, 0);
+	OSForceFullRelaunch();
+	SYSLaunchMenu();
+	OSScreenEnableEx(0, 0);
+	OSScreenEnableEx(1, 0);
 	free(screenBuffer);
-    return EXIT_RELAUNCH_ON_LOAD;
+	return EXIT_RELAUNCH_ON_LOAD;
 }
