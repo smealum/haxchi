@@ -121,7 +121,7 @@ int availSort(const void *c1, const void *c2)
 
 void printhdr_noflip()
 {
-	println_noflip(0,"Haxchi v2.2 by FIX94");
+	println_noflip(0,"Haxchi v2.2u1 by FIX94");
 	println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 }
 
@@ -366,7 +366,7 @@ int Menu_Main(void)
 	if(IOSUHAX_FSA_OpenFile(fsaFd, path, "rb", &mlcFd) < 0)
 	{
 		println(line++,"No already existing rom.zip found in the game!");
-		println(line++,"Make sure to update your DS title and try again.");
+		println(line++,"Make sure to re-install your DS title and try again.");
 		goto prgEnd;
 	}
 	else
