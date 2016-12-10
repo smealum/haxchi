@@ -120,6 +120,9 @@ int _main()
 	// allow any region title launch
 	*(volatile u32*)(0xE0030498 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
 
+	// force check USB storage on load
+	*(volatile u32*)(0xE012202C - 0xE0000000 + 0x12900000) = 0x00000001; // find USB flag
+
 	// nop out memcmp hash checks
 	*(volatile u32*)(0x040017E0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
 	*(volatile u32*)(0x040019C4 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0

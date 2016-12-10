@@ -304,7 +304,7 @@ static unsigned int getButtonsDown(unsigned int padscore_handle, unsigned int vp
 #define FORCE_HBL (VPAD_BUTTON_A | VPAD_BUTTON_B | VPAD_BUTTON_X | VPAD_BUTTON_Y)
 #define SD_HBL_PATH "/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf"
 
-static const char *verChar = "CBHC v1.0 by FIX94";
+static const char *verChar = "CBHC v1.1 by FIX94";
 
 #define DEFAULT_DISABLED 0
 #define DEFAULT_SYSMENU 1
