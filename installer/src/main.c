@@ -23,7 +23,10 @@
 #include "gameList.h"
 
 static const char *sdCardVolPath = "/vol/storage_sdcard";
-
+#ifdef CB
+static const char *systemXmlPath = "/vol/system/config/system.xml";
+static const char *syshaxXmlPath = "/vol/system/config/syshax.xml";
+#endif
 //just to be able to call async
 void someFunc(void *arg)
 {
@@ -121,7 +124,11 @@ int availSort(const void *c1, const void *c2)
 
 void printhdr_noflip()
 {
-	println_noflip(0,"Haxchi v2.2u1 by FIX94");
+#ifdef CB
+	println_noflip(0,"CBHC v1.0 by FIX94");
+#else
+	println_noflip(0,"Haxchi v2.3 by FIX94");
+#endif
 	println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 }
 
@@ -297,6 +304,9 @@ int Menu_Main(void)
 			redraw = 0;
 		}
 	}
+#ifdef CB
+	int action = 0;
+#endif
 	const parsedList_t *SelectedGame = &gAvail[PosX + ScrollX];
 	for(j = 0; j < 2; j++)
 	{
@@ -305,8 +315,14 @@ int Menu_Main(void)
 		printhdr_noflip();
 		println_noflip(2,"You have selected the following game:");
 		println_noflip(3,SelectedGame->name);
+#ifdef CB
+		println_noflip(4,"Press A to install CBHC, B to remove coldboothax, HOME to Exit.");
+		println_noflip(5,"WARNING, INSTALLING CBHC CAN POTENTIALLY BRICK YOUR SYSTEM!");
+		println_noflip(6,"NEVER UNINSTALL OR MOVE THE SELECTED GAME OR YOUR WIIU IS DEAD!");
+#else
 		println_noflip(4,"This will install Haxchi. To remove it you have to delete and");
 		println_noflip(5,"re-install the game. If you are sure press A, else press HOME.");
+#endif
 		OSScreenFlipBuffersEx(0);
 		OSScreenFlipBuffersEx(1);
 		usleep(25000);
@@ -328,16 +344,38 @@ int Menu_Main(void)
 		//lets go!
 		if(vpad.btns_d & VPAD_BUTTON_A)
 			break;
+#ifdef CB
+		if(vpad.btns_d & VPAD_BUTTON_B)
+		{
+			action = 1;
+			break;
+		}
+#endif
 	}
 
-	//will inject our custom mcp code
+#ifdef CB
+	//grab this before doing iosu exploit
+	unsigned long long(*_SYSGetSystemApplicationTitleId)(int sysApp);
+	OSDynLoad_FindExport(sysapp_handle,0,"_SYSGetSystemApplicationTitleId",&_SYSGetSystemApplicationTitleId);
+	unsigned long long sysmenuIdUll = _SYSGetSystemApplicationTitleId(0);
+	char sysmenuId[20];
+	memset(sysmenuId, 0, 20);
+	sprintf(sysmenuId, "%08x%08x", (u32)((sysmenuIdUll>>32)&0xFFFFFFFF),(u32)(sysmenuIdUll&0xFFFFFFFF));
+	char new_title_id[20];
+	memset(new_title_id, 0, 20);
+	sprintf(new_title_id, "00050000%08x", SelectedGame->tid);
+	int line = 7;
+#else
 	int line = 6;
+#endif
+
+	//will inject our custom mcp code
 	println(line++,"Doing IOSU Exploit...");
 	IOSUExploit();
 
 	int fsaFd = -1;
 	int sdMounted = 0;
-	int sdFd = -1, mlcFd = -1;
+	int sdFd = -1, mlcFd = -1, slcFd = -1;
 
 	//done with iosu exploit, take over mcp
 	if(MCPHookOpen() < 0)
@@ -353,6 +391,94 @@ int Menu_Main(void)
 		println(line++,"FSA could not be opened!");
 		goto prgEnd;
 	}
+#ifdef CB
+	if(action == 1)
+	{
+		if(IOSUHAX_FSA_OpenFile(fsaFd, systemXmlPath, "rb", &slcFd) >= 0)
+		{
+			//read in system xml file
+			fileStat_s stats;
+			IOSUHAX_FSA_StatFile(fsaFd, slcFd, &stats);
+			size_t sysXmlSize = stats.size;
+			char *sysXmlBuf = malloc(sysXmlSize+1);
+			memset(sysXmlBuf, 0, sysXmlSize+1);
+			fsa_read(fsaFd, slcFd, sysXmlBuf, sysXmlSize);
+			IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
+			slcFd = -1;
+			xmlDocPtr doc = xmlReadMemory(sysXmlBuf, sysXmlSize, "system.xml", "utf-8", 0);
+			//verify title id
+			int idFound = 0, idCorrect = 0;
+			xmlNode *root_element = xmlDocGetRootElement(doc);
+			xmlNode *cur_node = NULL;
+			for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
+				if (cur_node->type == XML_ELEMENT_NODE) {
+					if(memcmp(cur_node->name, "default_title_id", 17) == 0)
+					{
+						if(xmlNodeGetContent(cur_node) == NULL || !strlen((char*)xmlNodeGetContent(cur_node))) continue;
+						if(memcmp(new_title_id, (char*)xmlNodeGetContent(cur_node), 17) == 0) idCorrect++;
+						idFound++;
+					}
+				}
+			}
+			xmlFreeDoc(doc);
+			free(sysXmlBuf);
+			if(idFound != 1)
+				println(line++,"default_title_id missing!");
+			else if(idCorrect != 1)
+				println(line++,"default_title_id not set to selected DS VC!");
+			else
+			{
+				if(IOSUHAX_FSA_OpenFile(fsaFd, syshaxXmlPath, "rb", &slcFd) >= 0)
+				{
+					//read in system xml file
+					fileStat_s stats;
+					IOSUHAX_FSA_StatFile(fsaFd, slcFd, &stats);
+					size_t sysXmlSize = stats.size;
+					sysXmlBuf = malloc(sysXmlSize+1);
+					memset(sysXmlBuf, 0, sysXmlSize+1);
+					fsa_read(fsaFd, slcFd, sysXmlBuf, sysXmlSize);
+					IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
+					slcFd = -1;
+					xmlDocPtr doc = xmlReadMemory(sysXmlBuf, sysXmlSize, "syshax.xml", "utf-8", 0);
+					//verify title id
+					int idFound = 0, idCorrect = 0;
+					xmlNode *root_element = xmlDocGetRootElement(doc);
+					xmlNode *cur_node = NULL;
+					for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
+						if (cur_node->type == XML_ELEMENT_NODE) {
+							if(memcmp(cur_node->name, "default_title_id", 17) == 0)
+							{
+								if(xmlNodeGetContent(cur_node) == NULL || !strlen((char*)xmlNodeGetContent(cur_node))) continue;
+								if(memcmp(sysmenuId, (char*)xmlNodeGetContent(cur_node), 17) == 0) idCorrect++;
+								idFound++;
+							}
+						}
+					}
+					xmlFreeDoc(doc);
+					if(idFound != 1)
+						println(line++,"default_title_id missing!");
+					else if(idCorrect != 1)
+						println(line++,"default_title_id not set to System Menu!");
+					else
+					{
+						if(IOSUHAX_FSA_OpenFile(fsaFd, systemXmlPath, "wb", &slcFd) >= 0)
+						{
+							println(line++,"Restoring system.xml...");
+							fsa_write(fsaFd, slcFd, sysXmlBuf, sysXmlSize);
+							IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
+							slcFd = -1;
+							println(line++,"Removed coldboothax!");
+						}
+					}
+					free(sysXmlBuf);
+				}
+				else
+					println(line++,"syshax.xml backup not found, aborting!");
+			}
+		}
+		goto prgEnd;
+	}
+#endif
 	int ret = IOSUHAX_FSA_Mount(fsaFd, "/dev/sdcard01", sdCardVolPath, 2, (void*)0, 0);
 	if(ret < 0)
 	{
@@ -380,9 +506,14 @@ int Menu_Main(void)
 	}
 
 	char sdHaxchiPath[256];
+#ifdef CB
+	sprintf(sdHaxchiPath,"%s/cbhc",sdCardVolPath);
+#else
 	sprintf(sdHaxchiPath,"%s/haxchi",sdCardVolPath);
-
+#endif
 	char sdPath[256];
+
+#ifndef CB
 	sprintf(sdPath,"%s/config.txt",sdHaxchiPath);
 	if(IOSUHAX_FSA_OpenFile(fsaFd, sdPath, "rb", &sdFd) >= 0)
 	{
@@ -407,6 +538,7 @@ int Menu_Main(void)
 		}
 		free(cfgBuf);
 	}
+#endif
 
 	sprintf(sdPath,"%s/title.txt",sdHaxchiPath);
 	if(IOSUHAX_FSA_OpenFile(fsaFd, sdPath, "rb", &sdFd) >= 0)
@@ -449,11 +581,10 @@ int Menu_Main(void)
 			xmlSaveNoEmptyTags = 1; //keeps original style
 			xmlDocDumpFormatMemoryEnc(doc, &newXml, &newSize, "utf-8", 0);
 			xmlFreeDoc(doc);
-			free(metaBuf);
 			if(newXml != NULL && newSize > 0)
 			{
 				//libxml2 adds in extra \n at the end
-				if(newXml[newSize-1] == '\n')
+				if(newXml[newSize-1] == '\n' && metaBuf[metaSize-1] != '\n')
 				{
 					newXml[newSize-1] = '\0';
 					newSize--;
@@ -464,7 +595,7 @@ int Menu_Main(void)
 					println(line++,"Changing game title...");
 					//UTF-8 BOM
 					char bom[3] = { 0xEF, 0xBB, 0xBF };
-					if(memcmp(newXml, bom, 3) != 0)
+					if(memcmp(newXml, bom, 3) != 0 && memcmp(metaBuf, bom, 3) == 0)
 						fsa_write(fsaFd, mlcFd, bom, 0x03);
 					fsa_write(fsaFd, mlcFd, newXml, newSize);
 					IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
@@ -472,6 +603,7 @@ int Menu_Main(void)
 				}
 				free(newXml);
 			}
+			free(metaBuf);
 		}
 		free(titleBuf);
 	}
@@ -568,7 +700,123 @@ int Menu_Main(void)
 		free(bootSound);
 	}
 
+#ifdef CB
+	if(IOSUHAX_FSA_OpenFile(fsaFd, systemXmlPath, "rb", &slcFd) >= 0)
+	{
+		//read in system xml file
+		fileStat_s stats;
+		IOSUHAX_FSA_StatFile(fsaFd, slcFd, &stats);
+		size_t sysXmlSize = stats.size;
+		char *sysXmlBuf = malloc(sysXmlSize+1);
+		memset(sysXmlBuf, 0, sysXmlSize+1);
+		fsa_read(fsaFd, slcFd, sysXmlBuf, sysXmlSize);
+		IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
+		slcFd = -1;
+		xmlDocPtr doc = xmlReadMemory(sysXmlBuf, sysXmlSize, "system.xml", "utf-8", 0);
+		//change default title id
+		int idFound = 0, idCorrect = 0;
+		xmlNode *root_element = xmlDocGetRootElement(doc);
+		xmlNode *cur_node = NULL;
+		for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
+			if (cur_node->type == XML_ELEMENT_NODE) {
+				if(memcmp(cur_node->name, "default_title_id", 17) == 0)
+				{
+					if(xmlNodeGetContent(cur_node) == NULL || !strlen((char*)xmlNodeGetContent(cur_node))) continue;
+					if(memcmp(sysmenuId, (char*)xmlNodeGetContent(cur_node), 17) == 0) idCorrect++;
+					idFound++;
+				}
+			}
+		}
+		if(idFound != 1)
+			println(line++,"default_title_id missing!");
+		else if(idCorrect != 1)
+			println(line++,"default_title_id not set to System Menu!");
+		else
+		{
+			int xmlBackedUp = 0;
+			if(IOSUHAX_FSA_OpenFile(fsaFd, syshaxXmlPath, "rb", &slcFd) < 0)
+			{
+				//write syshax.xml
+				if(IOSUHAX_FSA_OpenFile(fsaFd, syshaxXmlPath, "wb", &slcFd) >= 0)
+				{
+					println(line++,"Writing syshax.xml...");
+					fsa_write(fsaFd, slcFd, sysXmlBuf, sysXmlSize);
+					xmlBackedUp = 1;
+					IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
+					slcFd = -1;
+				}
+			}
+			else
+			{
+				println(line++,"syshax.xml already found, skipping...");
+				xmlBackedUp = 1;
+				IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
+				slcFd = -1;
+			}
+			if(xmlBackedUp == 0)
+				println(line++,"Failed to back up system.xml!");
+			else
+			{
+				idFound = 0, idCorrect = 0;
+				root_element = xmlDocGetRootElement(doc);
+				cur_node = NULL;
+				for (cur_node = root_element->children; cur_node; cur_node = cur_node->next) {
+					if (cur_node->type == XML_ELEMENT_NODE) {
+						if(memcmp(cur_node->name, "default_title_id", 17) == 0)
+						{
+							if(xmlNodeGetContent(cur_node) == NULL || !strlen((char*)xmlNodeGetContent(cur_node))) continue;
+							if(memcmp(sysmenuId, (char*)xmlNodeGetContent(cur_node), 17) == 0)
+							{
+								xmlNodeSetContent(cur_node, (xmlChar*)new_title_id);
+								idCorrect++;
+							}
+							idFound++;
+						}
+					}
+				}
+				if(idFound != 1)
+					println(line++,"default_title_id missing!");
+				else if(idCorrect != 1)
+					println(line++,"default_title_id not set to System Menu!");
+				else
+				{
+					//back to xml
+					xmlChar *newXml = NULL;
+					int newSize = 0;
+					xmlSaveNoEmptyTags = 0; //yep, different from meta.xml style
+					xmlDocDumpFormatMemoryEnc(doc, &newXml, &newSize, "utf-8", 0);
+					xmlFreeDoc(doc);
+					if(newXml != NULL && newSize > 0)
+					{
+						//libxml2 adds in extra \n at the end
+						if(newXml[newSize-1] == '\n' && sysXmlBuf[sysXmlSize-1] != '\n')
+						{
+							newXml[newSize-1] = '\0';
+							newSize--;
+						}
+						//write back to nand
+						if(IOSUHAX_FSA_OpenFile(fsaFd, systemXmlPath, "wb", &slcFd) >= 0)
+						{
+							println(line++,"Writing system.xml...");
+							//UTF-8 BOM
+							char bom[3] = { 0xEF, 0xBB, 0xBF };
+							if(memcmp(newXml, bom, 3) != 0 && memcmp(sysXmlBuf, bom, 3) == 0)
+								fsa_write(fsaFd, slcFd, bom, 0x03);
+							fsa_write(fsaFd, slcFd, newXml, newSize);
+							IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
+							slcFd = -1;
+						}
+						free(newXml);
+					}
+				}
+			}
+		}
+		free(sysXmlBuf);
+	}
+	println(line++,"Done installing CBHC!");
+#else
 	println(line++,"Done installing Haxchi!");
+#endif
 
 prgEnd:
 	if(tList)
@@ -578,12 +826,16 @@ prgEnd:
 	//close down everything fsa related
 	if(fsaFd >= 0)
 	{
+		if(slcFd >= 0)
+			IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
 		if(mlcFd >= 0)
 			IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
 		if(sdFd >= 0)
 			IOSUHAX_FSA_CloseFile(fsaFd, sdFd);
 		if(sdMounted)
 			IOSUHAX_FSA_Unmount(fsaFd, sdCardVolPath, 2);
+		if(IOSUHAX_FSA_FlushVolume(fsaFd, "/vol/storage_mlc01") == 0)
+			println(line++, "Flushed NAND Cache!");
 		IOSUHAX_FSA_Close(fsaFd);
 	}
 	//close out old mcp instance

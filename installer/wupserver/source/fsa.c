@@ -61,6 +61,20 @@ int FSA_Unmount(int fd, char* path, u32 flags)
 	return ret;
 }
 
+int FSA_FlushVolume(int fd, char* volume_path)
+{
+	u8* iobuf = allocIobuf();
+	u32* inbuf = (u32*)iobuf;
+	u32* outbuf = (u32*)&iobuf[0x520];
+
+	strncpy((char*)&inbuf[0x01], volume_path, 0x27F);
+
+	int ret = svcIoctl(fd, 0x1B, inbuf, 0x520, outbuf, 0x293);
+
+	freeIobuf(iobuf);
+	return ret;
+}
+
 int FSA_MakeDir(int fd, char* path, u32 flags)
 {
 	u8* iobuf = allocIobuf();

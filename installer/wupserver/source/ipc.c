@@ -70,6 +70,7 @@
 #define IOCTL_FSA_RAW_WRITE         0x56
 #define IOCTL_FSA_RAW_CLOSE         0x57
 #define IOCTL_FSA_CHANGEMODE        0x58
+#define IOCTL_FSA_FLUSHVOLUME       0x59
 
 //static u8 threadStack[0x1000] __attribute__((aligned(0x20)));
 
@@ -226,6 +227,14 @@ static int ipc_ioctl(ipcmessage *message)
         u32 flags = message->ioctl.buffer_in[2];
 
         message->ioctl.buffer_io[0] = FSA_Unmount(fd, device_path, flags);
+        break;
+    }
+    case IOCTL_FSA_FLUSHVOLUME:
+    {
+        int fd = message->ioctl.buffer_in[0];
+        char *path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+
+        message->ioctl.buffer_io[0] = FSA_FlushVolume(fd, path);
         break;
     }
     case IOCTL_FSA_GETDEVICEINFO:

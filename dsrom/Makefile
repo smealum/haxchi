@@ -6,6 +6,16 @@ else
 	ZIP = zip
 endif
 
+ifeq ($(CB), 1)
+	HAXCHI_S = haxchi_cb.s
+	ROP_S = haxchi_rop_cb.s
+	ROP_BIN = haxchi_rop_cb.bin
+else
+	HAXCHI_S = haxchi.s
+	ROP_S = haxchi_rop.s
+	ROP_BIN = haxchi_rop.bin
+endif
+
 all: setup animalcrossing brainage dkjclimber guardiansigns kirby kirbymassattack mariokartds masterofdisguise newsmb_eur partnersintime \
 	pokemonranger sfcommand sm64ds yoshids zeldaph zeldast \
 	animalcrossing.zip brainage.zip dkjclimber.zip guardiansigns.zip kirby.zip kirbymassattack.zip mariokartds.zip masterofdisguise.zip \
@@ -47,154 +57,155 @@ setup:
 	@cd option_select && make && cd ..
 	@cd hbl_loader && make && cd ..
 	@cd cfw_booter && make && cd ..
+	@cd CBHC && make && cd ..
 
 setup_animalcrossing:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f animalcrossing_defs.s defines.s
 
 setup_brainage:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f brainage_defs.s defines.s
 
 setup_dkjclimber:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f dkjclimber_defs.s defines.s
 
 setup_guardiansigns:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f guardiansigns_defs.s defines.s
 
 setup_kirby:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f kirby_defs.s defines.s
 
 setup_kirbymassattack:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f kirbymassattack_defs.s defines.s
 
 setup_mariokartds:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f mariokartds_defs.s defines.s
 
 setup_masterofdisguise:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f masterofdisguise_defs.s defines.s
 
 setup_newsmb_eur:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f newsmb_eur_defs.s defines.s
 
 setup_pokemonranger:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f pokemonranger_defs.s defines.s
 
 setup_partnersintime:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f partnersintime_defs.s defines.s
 
 setup_sfcommand:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f sfcommand_defs.s defines.s
 
 setup_sm64ds:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f sm64ds_defs.s defines.s
 
 setup_yoshids:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f yoshids_defs.s defines.s
 
 setup_zeldaph:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f zeldaph_defs.s defines.s
 
 setup_zeldast:
-	@rm -f defines.s haxchi_rop.bin haxchi_rop_hook.bin
+	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
 	@cp -f zeldast_defs.s defines.s
 
 animalcrossing.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds animalcrossing.nds
 
 brainage.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds brainage.nds
 	@cp brainage.nds yoshitouchandgo.nds
 
 dkjclimber.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds dkjclimber.nds
 
 guardiansigns.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds guardiansigns.nds
 
 kirby.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds kirby.nds
 
 kirbymassattack.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds kirbymassattack.nds
 
 mariokartds.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds mariokartds.nds
 	@cp mariokartds.nds newsmb.nds
 
 masterofdisguise.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds masterofdisguise.nds
 
 newsmb_eur.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds newsmb_eur.nds
 
 pokemonranger.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds pokemonranger.nds
 
 partnersintime.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds partnersintime.nds
 
 sfcommand.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds sfcommand.nds
 
 sm64ds.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds sm64ds.nds
 	@cp sm64ds.nds kirbycanvascurse.nds
 
 yoshids.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds yoshids.nds
 	@cp yoshids.nds wwtouched.nds
 	@cp yoshids.nds bigbrainacademy.nds
 
 zeldaph.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds zeldaph.nds
 
 zeldast.nds:
-	@armips haxchi_rop.s
-	@armips haxchi.s
+	@armips $(ROP_S)
+	@armips $(HAXCHI_S)
 	@mv rom.nds zeldast.nds
 	@cp zeldast.nds explorersofsky.nds
 	@cp zeldast.nds shadowsofalmia.nds
@@ -259,4 +270,5 @@ clean:
 	@cd option_select && make clean && cd ..
 	@cd hbl_loader && make clean && cd ..
 	@cd cfw_booter && make clean && cd ..
+	@cd CBHC && make clean && cd ..
 	@echo "all cleaned up !"

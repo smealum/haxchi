@@ -31,6 +31,7 @@ int FSA_Open();
 
 int FSA_Mount(int fd, char* device_path, char* volume_path, u32 flags, char* arg_string, int arg_string_len);
 int FSA_Unmount(int fd, char* path, u32 flags);
+int FSA_FlushVolume(int fd, char* volume_path);
 
 int FSA_GetDeviceInfo(int fd, char* device_path, int type, u32* out_data);
 
