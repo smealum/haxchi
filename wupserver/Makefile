@@ -11,7 +11,7 @@ CC = arm-none-eabi-gcc
 LINK = arm-none-eabi-ld
 AS = arm-none-eabi-as
 OBJCOPY = arm-none-eabi-objcopy
-CFLAGS += -Wall -mbig-endian -std=c99 -march=armv5 -Os -I$(DEVKITPRO)/libnds/include
+CFLAGS += -Wall -mbig-endian -std=c99 -mcpu=arm926ej-s -Os -s -mthumb -I$(DEVKITPRO)/libnds/include
 LDFLAGS += --script=ccd00.ld -EB -L"$(DEVKITARM)/arm-none-eabi/lib"
 
 CFILES = $(wildcard source/*.c)
@@ -43,13 +43,13 @@ dirs:
 
 $(PROJECTNAME).bin: $(PROJECTNAME).elf
 #	$(OBJCOPY) -O binary $< $@
-	$(OBJCOPY) -j .text -j .rodata -O binary $< $@
+	$(OBJCOPY) -j .text -j .rodata -S -O binary $< $@
 
 $(PROJECTNAME)_bin.h: $(PROJECTNAME).bin
 	xxd -i $< | sed "s/unsigned/static const unsigned/g;s/$(PROJECTNAME)$*/$(PROJECTNAME)/g" > $@
 
 $(PROJECTNAME).elf: $(OFILES)
-	$(LINK) $(LDFLAGS) -o $(PROJECTNAME).elf $(sort $(filter-out build/crt0.o, $(OFILES)))
+	$(LINK) $(LDFLAGS) -o $(PROJECTNAME).elf $(sort $(filter-out build/crt0.o, $(OFILES))) libgcc.a
 
 clean:
 	@rm -f build/*.o build/*.d

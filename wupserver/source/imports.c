@@ -21,7 +21,7 @@ void* memcpy(void* dst, const void* src, size_t size)
 {
 	return _memcpy(dst, (void*)src, size);
 }
-
+/*
 int strlen(const char* str)
 {
     unsigned int i = 0;
@@ -30,7 +30,7 @@ int strlen(const char* str)
     }
     return i;
 }
-
+*/
 char* strncpy(char* dst, const char* src, size_t size)
 {
 	int i;
@@ -42,8 +42,9 @@ char* strncpy(char* dst, const char* src, size_t size)
 
 	return dst;
 }
-
+/*
 int vsnprintf(char * s, size_t n, const char * format, va_list arg)
 {
     return ((int (*const)(char*, size_t, const char *, va_list))0x05055C40)(s, n, format, arg);
 }
+*/

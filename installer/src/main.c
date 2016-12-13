@@ -125,9 +125,9 @@ int availSort(const void *c1, const void *c2)
 void printhdr_noflip()
 {
 #ifdef CB
-	println_noflip(0,"CBHC v1.1 by FIX94");
+	println_noflip(0,"CBHC v1.2 by FIX94");
 #else
-	println_noflip(0,"Haxchi v2.3 by FIX94");
+	println_noflip(0,"Haxchi v2.3u1 by FIX94");
 #endif
 	println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 }
@@ -369,19 +369,24 @@ int Menu_Main(void)
 	int line = 6;
 #endif
 
-	//will inject our custom mcp code
-	println(line++,"Doing IOSU Exploit...");
-	IOSUExploit();
-
 	int fsaFd = -1;
 	int sdMounted = 0;
 	int sdFd = -1, mlcFd = -1, slcFd = -1;
 
-	//done with iosu exploit, take over mcp
-	if(MCPHookOpen() < 0)
+	//open up iosuhax
+	int res = IOSUHAX_Open(NULL);
+	if(res < 0)
+		res = MCPHookOpen();
+	if(res < 0)
 	{
-		println(line++,"MCP hook could not be opened!");
-		goto prgEnd;
+		println(line++,"Doing IOSU Exploit...");
+		IOSUExploit();
+		//done with iosu exploit, take over mcp
+		if(MCPHookOpen() < 0)
+		{
+			println(line++,"MCP hook could not be opened!");
+			goto prgEnd;
+		}
 	}
 
 	//mount with full permissions
@@ -838,8 +843,11 @@ prgEnd:
 			println(line++, "Flushed NAND Cache!");
 		IOSUHAX_FSA_Close(fsaFd);
 	}
-	//close out old mcp instance
-	MCPHookClose();
+	//close out iosuhax
+	if(mcp_hook_fd >= 0)
+		MCPHookClose();
+	else
+		IOSUHAX_Close();
 	sleep(5);
 	//will do IOSU reboot
 	OSForceFullRelaunch();

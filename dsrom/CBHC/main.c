@@ -36,19 +36,22 @@ static unsigned int getButtonsDown(unsigned int padscore_handle, unsigned int vp
 #define FORCE_SYSMENU (VPAD_BUTTON_ZL | VPAD_BUTTON_ZR | VPAD_BUTTON_L | VPAD_BUTTON_R)
 #define FORCE_HBL (VPAD_BUTTON_A | VPAD_BUTTON_B | VPAD_BUTTON_X | VPAD_BUTTON_Y)
 #define SD_HBL_PATH "/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf"
+#define SD_MOCHA_PATH "/vol/external01/wiiu/apps/mocha/mocha.elf"
 
-static const char *verChar = "CBHC v1.1 by FIX94";
+static const char *verChar = "CBHC v1.2 by FIX94";
 
 #define DEFAULT_DISABLED 0
 #define DEFAULT_SYSMENU 1
 #define DEFAULT_HBL 2
-#define DEFAULT_CFW_IMG 3
-#define DEFAULT_MAX 4
+#define DEFAULT_MOCHA 3
+#define DEFAULT_CFW_IMG 4
+#define DEFAULT_MAX 5
 
 static const char *defOpts[DEFAULT_MAX] = {
 	"DEFAULT_DISABLED",
 	"DEFAULT_SYSMENU",
 	"DEFAULT_HBL",
+	"DEFAULT_MOCHA",
 	"DEFAULT_CFW_IMG",
 };
 
@@ -56,12 +59,14 @@ static const char *bootOpts[DEFAULT_MAX] = {
 	"Disabled",
 	"System Menu",
 	"Homebrew Launcher",
+	"Mocha CFW",
 	"fw.img on SD Card",
 };
 
 #define LAUNCH_SYSMENU 0
 #define LAUNCH_HBL 1
-#define LAUNCH_CFW_IMG 2
+#define LAUNCH_MOCHA 2
+#define LAUNCH_CFW_IMG 3
 
 #define OSScreenEnable(enable) OSScreenEnableEx(0, enable); OSScreenEnableEx(1, enable);
 #define OSScreenClearBuffer(tmp) OSScreenClearBufferEx(0, tmp); OSScreenClearBufferEx(1, tmp);
@@ -86,9 +91,6 @@ uint32_t __main(void)
 	OSDynLoad_FindExport(sysapp_handle,0,"_SYSGetSystemApplicationTitleId",&_SYSGetSystemApplicationTitleId);
 	unsigned long long sysmenu = _SYSGetSystemApplicationTitleId(0);
 
-	//set up default hbl path
-	strcpy((void*)0xF5E70000,SD_HBL_PATH);
-
 	unsigned int vpad_handle;
 	OSDynLoad_Acquire("vpad.rpl", &vpad_handle);
 
@@ -112,6 +114,7 @@ uint32_t __main(void)
 		else if(((vpad.btns_d|vpad.btns_h) & FORCE_HBL) == FORCE_HBL)
 		{
 			// original hbl loader payload
+			strcpy((void*)0xF5E70000,SD_HBL_PATH);
 			return 0x01800000;
 		}
 	}
@@ -298,7 +301,7 @@ uint32_t __main(void)
 cbhc_menu:	;
 	int redraw = 1;
 	int PosX = 0;
-	int ListMax = 4;
+	int ListMax = 5;
 	int clickT = 0;
 	while(1)
 	{
@@ -342,7 +345,7 @@ cbhc_menu:	;
 
 		if( btnDown & VPAD_BUTTON_A )
 		{
-			if(PosX == 3)
+			if(PosX == 4)
 			{
 				cur_autoboot++;
 				if(cur_autoboot == DEFAULT_MAX)
@@ -366,10 +369,12 @@ cbhc_menu:	;
 			OSScreenPutFont(0, 1, printStr);
 			__os_snprintf(printStr,64,"%c Boot Homebrew Launcher", 1 == PosX ? '>' : ' ');
 			OSScreenPutFont(0, 2, printStr);
-			__os_snprintf(printStr,64,"%c Boot fw.img on SD Card", 2 == PosX ? '>' : ' ');
+			__os_snprintf(printStr,64,"%c Boot Mocha CFW", 2 == PosX ? '>' : ' ');
 			OSScreenPutFont(0, 3, printStr);
-			__os_snprintf(printStr,64,"%c Autoboot: %s", 3 == PosX ? '>' : ' ', bootOpts[cur_autoboot]);
+			__os_snprintf(printStr,64,"%c Boot fw.img on SD Card", 3 == PosX ? '>' : ' ');
 			OSScreenPutFont(0, 4, printStr);
+			__os_snprintf(printStr,64,"%c Autoboot: %s", 4 == PosX ? '>' : ' ', bootOpts[cur_autoboot]);
+			OSScreenPutFont(0, 5, printStr);
 
 			OSScreenFlipBuffers();
 			redraw = 0;
@@ -428,7 +433,15 @@ doIOSUexploit:
 	IOS_Close(dev_uhs_0_handle);
 
 	if(launchmode == LAUNCH_HBL)
+	{
+		strcpy((void*)0xF5E70000,SD_HBL_PATH);
 		return 0x01800000;
+	}
+	else if(launchmode == LAUNCH_MOCHA)
+	{
+		strcpy((void*)0xF5E70000,SD_MOCHA_PATH);
+		return 0x01800000;
+	}
 	//sysmenu or cfw
 	if(launchmode == LAUNCH_CFW_IMG)
 		OSForceFullRelaunch();

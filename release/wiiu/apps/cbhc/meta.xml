@@ -2,9 +2,9 @@
 <app version="1">
   <name>CBHC</name>
   <coder>FIX94</coder>
-  <version>1.1</version>
+  <version>1.2</version>
   <url>https://github.com/FIX94/haxchi</url>
-  <release_date>20161210200000</release_date>
+  <release_date>20161213200000</release_date>
   <short_description>Coldboot Haxchi Installer</short_description>
   <long_description>WARNING! This will install Coldboot Haxchi on your system.
 ONLY USE THIS IF YOU ARE WILLING TO TAKE A RISK OF BRICKING YOUR CONSOLE.

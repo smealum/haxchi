@@ -89,7 +89,9 @@ int _main()
 	void * pUserBinDest = (void*)0x101312D0;
 	kernel_memcpy(pUserBinDest, (void*)pUserBinSource, sizeof(arm_user_bin));
 
-	void * test = (void*)(0x05100000 - 0x05100000 + 0x13D80000);
+	// overwrite mcp_d_r code with wupserver
+	*(unsigned int*)(0x0510E56C - 0x05100000 + 0x13D80000) = 0x47700000; //bx lr
+	void * test = (void*)(0x0510E570 - 0x05100000 + 0x13D80000);
 	kernel_memcpy(test, (void*)wupserver_bin, sizeof(wupserver_bin));
 	invalidate_dcache((u32)test, sizeof(wupserver_bin));
 	invalidate_icache();
@@ -98,7 +100,7 @@ int _main()
 	*(unsigned int*)(0x05026BA8 - 0x05000000 + 0x081C0000) = 0x47780000; // bx pc
 	*(unsigned int*)(0x05026BAC - 0x05000000 + 0x081C0000) = 0xE59F1000; // ldr r1, [pc]
 	*(unsigned int*)(0x05026BB0 - 0x05000000 + 0x081C0000) = 0xE12FFF11; // bx r1
-	*(unsigned int*)(0x05026BB4 - 0x05000000 + 0x081C0000) = 0x05100000; // wupserver code
+	*(unsigned int*)(0x05026BB4 - 0x05000000 + 0x081C0000) = 0x0510E570; // wupserver code
 
 	*(unsigned int*)(0x050282AE - 0x05000000 + 0x081C0000) = 0xF031FB43; // bl launch_os_hook
 

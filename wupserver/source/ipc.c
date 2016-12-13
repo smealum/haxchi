@@ -31,6 +31,7 @@
 //#include "logger.h"
 #include "fsa.h"
 
+#define IOSUHAX_MAGIC_WORD          0x4E696365
 #define IOS_ERROR_UNKNOWN_VALUE     0xFFFFFFD6
 #define IOS_ERROR_INVALID_ARG       0xFFFFFFE3
 #define IOS_ERROR_INVALID_SIZE      0xFFFFFFE9
@@ -71,6 +72,7 @@
 #define IOCTL_FSA_RAW_CLOSE         0x57
 #define IOCTL_FSA_CHANGEMODE        0x58
 #define IOCTL_FSA_FLUSHVOLUME       0x59
+#define IOCTL_CHECK_IF_IOSUHAX      0x5B
 
 //static u8 threadStack[0x1000] __attribute__((aligned(0x20)));
 
@@ -136,7 +138,7 @@ static int ipc_ioctl(ipcmessage *message)
         }
         break;
     }
-    case IOCTL_REPEATED_WRITE:
+    /*case IOCTL_REPEATED_WRITE:
     {
         if(message->ioctl.length_in < 12)
         {
@@ -191,7 +193,7 @@ static int ipc_ioctl(ipcmessage *message)
         //! TODO: add syscall as on kern_read32
         res = IOS_ERROR_NOEXISTS;
         break;
-    }
+    }*/
     //!--------------------------------------------------------------------------------------------------------------
     //! FSA handles for better performance
     //!--------------------------------------------------------------------------------------------------------------
@@ -414,10 +416,15 @@ static int ipc_ioctl(ipcmessage *message)
         message->ioctl.buffer_io[0] = FSA_ChangeMode(fd, path, mode);
         break;
     }
+	case IOCTL_CHECK_IF_IOSUHAX:
+	{
+		message->ioctl.buffer_io[0] = IOSUHAX_MAGIC_WORD;
+		break;
+	}
     default:
         res = IOS_ERROR_INVALID_ARG;
         break;
-    }
+	}
 
     return res;
 }

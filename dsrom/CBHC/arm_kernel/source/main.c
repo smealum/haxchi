@@ -1,6 +1,7 @@
 #include "types.h"
 #include "utils.h"
 #include "../../payload/arm_user_bin.h"
+#include "../../payload/wupserver_bin.h"
 
 static const char repairData_set_fault_behavior[] = {
 	0xE1,0x2F,0xFF,0x1E,0xE9,0x2D,0x40,0x30,0xE5,0x93,0x20,0x00,0xE1,0xA0,0x40,0x00,
@@ -88,16 +89,29 @@ int _main()
 	void * pUserBinDest = (void*)0x101312D0;
 	kernel_memcpy(pUserBinDest, (void*)pUserBinSource, sizeof(arm_user_bin));
 
+	// overwrite mcp_d_r code with wupserver
+	*(unsigned int*)(0x0510E56C - 0x05100000 + 0x13D80000) = 0x47700000; //bx lr
+	void * test = (void*)(0x0510E570 - 0x05100000 + 0x13D80000);
+	kernel_memcpy(test, (void*)wupserver_bin, sizeof(wupserver_bin));
+	invalidate_dcache((u32)test, sizeof(wupserver_bin));
+	invalidate_icache();
+
+	// replace ioctl 0x62 code with jump to wupserver
+	*(unsigned int*)(0x05026BA8 - 0x05000000 + 0x081C0000) = 0x47780000; // bx pc
+	*(unsigned int*)(0x05026BAC - 0x05000000 + 0x081C0000) = 0xE59F1000; // ldr r1, [pc]
+	*(unsigned int*)(0x05026BB0 - 0x05000000 + 0x081C0000) = 0xE12FFF11; // bx r1
+	*(unsigned int*)(0x05026BB4 - 0x05000000 + 0x081C0000) = 0x0510E570; // wupserver code
+
 	// fix 10 minute timeout that crashes MCP after 10 minutes of booting
-	*(volatile u32*)(0x05022474 - 0x05000000 + 0x081C0000) = 0xFFFFFFFF;        // NEW_TIMEOUT
+	*(volatile u32*)(0x05022474 - 0x05000000 + 0x081C0000) = 0xFFFFFFFF; // NEW_TIMEOUT
 
 	// patch cached cert check
-	*(volatile u32*)(0x05054D6C - 0x05000000 + 0x081C0000) = 0xE3A00000;    // mov r0, 0
-	*(volatile u32*)(0x05054D70 - 0x05000000 + 0x081C0000) = 0xE12FFF1E;    // bx lr
+	*(volatile u32*)(0x05054D6C - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, 0
+	*(volatile u32*)(0x05054D70 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
 
 	// patch cert verification
-	*(volatile u32*)(0x05052A90 - 0x05000000 + 0x081C0000) = 0xe3a00000;    // mov r0, #0
-	*(volatile u32*)(0x05052A94 - 0x05000000 + 0x081C0000) = 0xe12fff1e;    // bx lr
+	*(volatile u32*)(0x05052A90 - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, #0
+	*(volatile u32*)(0x05052A94 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
 
 	// patch MCP authentication check
 	*(volatile u32*)(0x05014CAC - 0x05000000 + 0x081C0000) = 0x20004770; // mov r0, #0; bx lr

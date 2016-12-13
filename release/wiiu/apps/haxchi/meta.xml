@@ -2,9 +2,9 @@
 <app version="1">
   <name>Haxchi</name>
   <coder>FIX94</coder>
-  <version>2.3</version>
+  <version>2.3u1</version>
   <url>https://github.com/FIX94/haxchi</url>
-  <release_date>20161210200000</release_date>
+  <release_date>20161213200000</release_date>
   <short_description>Haxchi Installer</short_description>
   <long_description>This will install Haxchi on your system.
   </long_description>
