@@ -14,7 +14,7 @@
 #define SIMPLE_RETURN       0x101014E4
 #define SOURCE              0x01E20000
 #define IOS_CREATETHREAD    0x1012EABC
-#define ARM_CODE_BASE       0x08134100
+#define ARM_CODE_BASE       0x08135000
 #define REPLACE_SYSCALL     0x081298BC
 
 /* YOUR ARM CODE HERE (starts at ARM_CODE_BASE) */
@@ -38,7 +38,7 @@ static unsigned int getButtonsDown(unsigned int padscore_handle, unsigned int vp
 #define SD_HBL_PATH "/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf"
 #define SD_MOCHA_PATH "/vol/external01/wiiu/apps/mocha/mocha.elf"
 
-static const char *verChar = "CBHC v1.2 by FIX94";
+static const char *verChar = "CBHC v1.3 by FIX94";
 
 #define DEFAULT_DISABLED 0
 #define DEFAULT_SYSMENU 1
@@ -166,14 +166,17 @@ uint32_t __main(void)
 
 	void(*nn_act_initialize)(void);
 	unsigned char(*nn_act_getslotno)(void);
+	unsigned char(*nn_act_getdefaultaccount)(void);
 	void(*nn_act_finalize)(void);
 	OSDynLoad_FindExport(act_handle, 0, "Initialize__Q2_2nn3actFv", &nn_act_initialize);
 	OSDynLoad_FindExport(act_handle, 0, "GetSlotNo__Q2_2nn3actFv", &nn_act_getslotno);
+	OSDynLoad_FindExport(act_handle, 0, "GetDefaultAccount__Q2_2nn3actFv", &nn_act_getdefaultaccount);
 	OSDynLoad_FindExport(act_handle, 0, "Finalize__Q2_2nn3actFv", &nn_act_finalize);
 
 	FSInit();
 	nn_act_initialize();
 	unsigned char slot = nn_act_getslotno();
+	unsigned char defaultSlot = nn_act_getdefaultaccount();
 	SAVEInit();
 	SAVEInitSaveDir(slot);
 	FSAddClient(pClient, -1);
@@ -414,6 +417,8 @@ doIOSUexploit:
 	//for patched menu launch
 	void (*SYSLaunchMenu)(void);
 	OSDynLoad_FindExport(sysapp_handle, 0,"SYSLaunchMenu", &SYSLaunchMenu);
+	void(*_SYSLaunchMenuWithCheckingAccount)(unsigned char slot);
+	OSDynLoad_FindExport(sysapp_handle,0,"_SYSLaunchMenuWithCheckingAccount",&_SYSLaunchMenuWithCheckingAccount);
 
 	int (*IOS_Open)(char *path, unsigned int mode);
 	int (*IOS_Close)(int fd);
@@ -444,8 +449,17 @@ doIOSUexploit:
 	}
 	//sysmenu or cfw
 	if(launchmode == LAUNCH_CFW_IMG)
+	{
 		OSForceFullRelaunch();
-	SYSLaunchMenu();
+		SYSLaunchMenu();
+	}
+	else
+	{
+		if(defaultSlot) //normal menu boot
+			SYSLaunchMenu();
+		else //show mii select
+			_SYSLaunchMenuWithCheckingAccount(slot);
+	}
 	OSExitThread(0);
 	return 0;
 }

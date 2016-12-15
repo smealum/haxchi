@@ -1,8 +1,9 @@
 #include "types.h"
 #include "utils.h"
+#include "reload.h"
+#include "elf_patcher.h"
 #include "../../payload/arm_user_bin.h"
-#include "../../payload/wupserver_bin.h"
-
+#include "wupserver.h"
 static const char repairData_set_fault_behavior[] = {
 	0xE1,0x2F,0xFF,0x1E,0xE9,0x2D,0x40,0x30,0xE5,0x93,0x20,0x00,0xE1,0xA0,0x40,0x00,
 	0xE5,0x92,0x30,0x54,0xE1,0xA0,0x50,0x01,0xE3,0x53,0x00,0x01,0x0A,0x00,0x00,0x02,
@@ -42,27 +43,13 @@ static const char os_launch_hook[] = {
 
 static const char sd_path[] = "/vol/sdcard";
 
-static unsigned int __attribute__((noinline)) disable_mmu(void)
-{
-	unsigned int control_register = 0;
-	asm volatile("MRC p15, 0, %0, c1, c0, 0" : "=r" (control_register));
-	asm volatile("MCR p15, 0, %0, c1, c0, 0" : : "r" (control_register & 0xFFFFEFFA));
-	return control_register;
-}
-
-static void __attribute__((noinline)) restore_mmu(unsigned int control_register)
-{
-	asm volatile("MCR p15, 0, %0, c1, c0, 0" : : "r" (control_register));
-}
+#define wupserver_phys (0x0510E570 - 0x05100000 + 0x13D80000)
 
 int _main()
 {
-	int(*disable_interrupts)() = (int(*)())0x0812E778;
-	int(*enable_interrupts)(int) = (int(*)(int))0x0812E78C;
 	void(*invalidate_icache)() = (void(*)())0x0812DCF0;
 	void(*invalidate_dcache)(unsigned int, unsigned int) = (void(*)())0x08120164;
 	void(*flush_dcache)(unsigned int, unsigned int) = (void(*)())0x08120160;
-	char* (*kernel_memcpy)(void*, void*, int) = (char*(*)(void*, void*, int))0x08131D04;
 
 	flush_dcache(0x081200F0, 0x4001); // giving a size >= 0x4000 flushes all cache
 
@@ -75,6 +62,9 @@ int _main()
 
 	/* Patch kernel_error_handler to BX LR immediately */
 	*(volatile u32*)0x08129A24 = 0xE12FFF1E;
+
+	/* apply IOS ELF launch hook (thanks dimok!) */
+	*(volatile u32*)0x0812A120 = ARM_BL(0x0812A120, kernel_launch_ios);
 
 	void * pset_fault_behavior = (void*)0x081298BC;
 	kernel_memcpy(pset_fault_behavior, (void*)repairData_set_fault_behavior, sizeof(repairData_set_fault_behavior));
@@ -91,9 +81,8 @@ int _main()
 
 	// overwrite mcp_d_r code with wupserver
 	*(unsigned int*)(0x0510E56C - 0x05100000 + 0x13D80000) = 0x47700000; //bx lr
-	void * test = (void*)(0x0510E570 - 0x05100000 + 0x13D80000);
-	kernel_memcpy(test, (void*)wupserver_bin, sizeof(wupserver_bin));
-	invalidate_dcache((u32)test, sizeof(wupserver_bin));
+	kernel_memcpy((void*)wupserver_phys, get_wupserver_bin(), get_wupserver_bin_len());
+	invalidate_dcache((u32)wupserver_phys, get_wupserver_bin_len());
 	invalidate_icache();
 
 	// replace ioctl 0x62 code with jump to wupserver
@@ -157,14 +146,14 @@ int _main()
 
 		for (i = 0; i < sizeof(os_launch_hook); i++)
 			((char*)(0x05059938 - 0x05000000 + 0x081C0000))[i] = os_launch_hook[i];
-
-		// change system.xml to syshax.xml
-		*(volatile u32*)(0x050600F0 - 0x05060000 + 0x08220000) = 0x79736861; //ysha
-		*(volatile u32*)(0x050600F4 - 0x05060000 + 0x08220000) = 0x782E786D; //x.xm
-
-		*(volatile u32*)(0x05060114 - 0x05060000 + 0x08220000) = 0x79736861; //ysha
-		*(volatile u32*)(0x05060118 - 0x05060000 + 0x08220000) = 0x782E786D; //x.xm
 	}
+
+	// change system.xml to syshax.xml
+	*(volatile u32*)(0x050600F0 - 0x05060000 + 0x08220000) = 0x79736861; //ysha
+	*(volatile u32*)(0x050600F4 - 0x05060000 + 0x08220000) = 0x782E786D; //x.xm
+
+	*(volatile u32*)(0x05060114 - 0x05060000 + 0x08220000) = 0x79736861; //ysha
+	*(volatile u32*)(0x05060118 - 0x05060000 + 0x08220000) = 0x782E786D; //x.xm
 
 	*(volatile u32*)(0x1555500) = 0;
 

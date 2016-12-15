@@ -21,20 +21,38 @@
  * 3. This notice may not be removed or altered from any source
  * distribution.
  ***************************************************************************/
-#ifndef _UTILS_H
-#define _UTILS_H
+#ifndef _ELF_PATCHER_H
+#define _ELF_PATCHER_H
 
-#define ALIGN4(x)                   (((x) + 3) & ~3)
+#include "types.h"
 
-#define kernel_memcpy               ((void * (*)(void*, const void*, int))0x08131D04)
-#define kernel_memset               ((void *(*)(void*, int, unsigned int))0x08131DA0)
-#define kernel_strncpy              ((char *(*)(char*, const char*, unsigned int))0x081329B8)
-#define disable_interrupts          ((int(*)())0x0812E778)
-#define enable_interrupts           ((int(*)(int))0x0812E78C)
-#define kernel_bsp_command_5        ((int (*)(const char*, int offset, const char*, int size, void *buffer))0x0812EC40)
+#define ARM_B(addr, func)   (0xEA000000 | ((((u32)(func) - (u32)(addr) - 8) >> 2) & 0x00FFFFFF))
+#define ARM_BL(addr, func)  (0xEB000000 | ((((u32)(func) - (u32)(addr) - 8) >> 2) & 0x00FFFFFF))
 
-void reverse_memcpy(void* dest, const void* src, unsigned int size);
-unsigned int disable_mmu(void);
-void restore_mmu(unsigned int control_register);
+typedef struct
+{
+    u32 address;
+    void* data;
+    u32 size;
+} patch_table_t;
+
+void section_write(u32 ios_elf_start, u32 address, const void *data, u32 size);
+void section_write_bss(u32 ios_elf_start, u32 address, u32 size);
+
+static inline void section_write_word(u32 ios_elf_start, u32 address, u32 word)
+{
+    section_write(ios_elf_start, address, &word, sizeof(word));
+}
+
+
+static inline void patch_table_entries(u32 ios_elf_start, const patch_table_t * patch_table, u32 patch_count)
+{
+    u32 i;
+    for(i = 0; i < patch_count; i++)
+    {
+        section_write(ios_elf_start, patch_table[i].address, patch_table[i].data, patch_table[i].size);
+    }
+}
+
 
 #endif
