@@ -38,7 +38,7 @@ static unsigned int getButtonsDown(unsigned int padscore_handle, unsigned int vp
 #define SD_HBL_PATH "/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf"
 #define SD_MOCHA_PATH "/vol/external01/wiiu/apps/mocha/mocha.elf"
 
-static const char *verChar = "CBHC v1.3 by FIX94";
+static const char *verChar = "CBHC v1.4 by FIX94";
 
 #define DEFAULT_DISABLED 0
 #define DEFAULT_SYSMENU 1
@@ -230,6 +230,13 @@ uint32_t __main(void)
 	OSScreenSetBufferEx(1, (void*)(0xF4000000 + screen_buf0_size));
 	OSScreenEnable(1);
 
+	unsigned long long(*OSGetTitleID)();
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSGetTitleID", &OSGetTitleID);
+	unsigned int dsvcid = (unsigned int)(OSGetTitleID(0) & 0xFFFFFFFF);
+
+	char verInfStr[64];
+	__os_snprintf(verInfStr,64,"%s (DS Title %08X)", verChar, dsvcid);
+
 	unsigned int padscore_handle;
 	OSDynLoad_Acquire("padscore.rpl", &padscore_handle);
 
@@ -265,7 +272,7 @@ uint32_t __main(void)
 		goto cbhc_menu;
 
 	OSScreenClearBuffer(0);
-	OSScreenPutFont(0, 0, verChar);
+	OSScreenPutFont(0, 0, verInfStr);
 	OSScreenPutFont(0, 1, "Autobooting...");
 	OSScreenFlipBuffers();
 
@@ -291,7 +298,7 @@ uint32_t __main(void)
 		goto doIOSUexploit;
 
 	OSScreenClearBuffer(0);
-	OSScreenPutFont(0, 0, verChar);
+	OSScreenPutFont(0, 0, verInfStr);
 	OSScreenPutFont(0, 1, "Entering Menu...");
 	OSScreenFlipBuffers();
 	waitCnt = 30;
@@ -365,8 +372,7 @@ cbhc_menu:	;
 		if(redraw)
 		{
 			OSScreenClearBuffer(0);
-			OSScreenPutFont(0, 0, verChar);
-
+			OSScreenPutFont(0, 0, verInfStr);
 			char printStr[64];
 			__os_snprintf(printStr,64,"%c Boot System Menu", 0 == PosX ? '>' : ' ');
 			OSScreenPutFont(0, 1, printStr);
@@ -408,8 +414,9 @@ doIOSUexploit:
 	OSScreenFlipBuffers();
 
 	memcpy((void*)0xF5E70100, &sysmenu, 8);
-	*(volatile unsigned int*)0xF5E70120 = (launchmode == LAUNCH_CFW_IMG);
-	DCStoreRange((void*)0xF5E70100, 0x40);
+	*(volatile unsigned int*)0xF5E70108 = dsvcid;
+	*(volatile unsigned int*)0xF5E7010C = launchmode;
+	DCStoreRange((void*)0xF5E70100, 0x20);
 
 	int (*OSForceFullRelaunch)(void);
 	OSDynLoad_FindExport(coreinit_handle, 0, "OSForceFullRelaunch", &OSForceFullRelaunch);

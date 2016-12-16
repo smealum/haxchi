@@ -3,7 +3,7 @@
 #include "utils.h"
 #include "reload.h"
 #include "elf_patcher.h"
-#include "wupserver.h"
+#include "getbins.h"
 
 extern char __file_start, __file_end;
 
@@ -40,7 +40,7 @@ void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 		section_write_word(ios_elf_start, 0x05026BA8, 0x47780000); // bx pc
 		section_write_word(ios_elf_start, 0x05026BAC, 0xE59F1000); // ldr r1, [pc]
 		section_write_word(ios_elf_start, 0x05026BB0, 0xE12FFF11); // bx r1
-		section_write_word(ios_elf_start, 0x05026BB4, 0x0510E570); // wupserver code
+		section_write_word(ios_elf_start, 0x05026BB4, wupserver_addr); // wupserver code
 
 		// patch cert verification
 		section_write_word(ios_elf_start, 0x05052A90, 0xE3A00000); // mov r0, #0
@@ -55,15 +55,21 @@ void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 		section_write_word(ios_elf_start, 0x05054D70, 0xE12FFF1E); // bx lr
 
 		// change system.xml to syshax.xml
-		section_write_word(ios_elf_start, 0x050600F0, 0x79736861); //ysha
-		section_write_word(ios_elf_start, 0x050600F4, 0x782E786D); //x.xm
+		section_write_word(ios_elf_start, 0x050600F0, 0x79736861); // ysha
+		section_write_word(ios_elf_start, 0x050600F4, 0x782E786D); // x.xm
 
-		section_write_word(ios_elf_start, 0x05060114, 0x79736861); //ysha
-		section_write_word(ios_elf_start, 0x05060118, 0x782E786D); //x.xm
+		section_write_word(ios_elf_start, 0x05060114, 0x79736861); // ysha
+		section_write_word(ios_elf_start, 0x05060118, 0x782E786D); // x.xm
+
+		// jump to titleprot code (titleprot_addr+4)
+		section_write_word(ios_elf_start, 0x05107F70, 0xF005FD0A); //bl (titleprot_addr+4)
+		// overwrite mcp_d_r code with titleprot
+		section_write_word(ios_elf_start, titleprot_addr, 0x20004770); // mov r0, #0; bx lr
+		section_write(ios_elf_start, titleprot_addr+4, get_titleprot_bin(), get_titleprot_bin_len());
 
 		// overwrite mcp_d_r code with wupserver
-		section_write_word(ios_elf_start, 0x0510E56C, 0x47700000); //bx lr
-		section_write(ios_elf_start, 0x0510E570, get_wupserver_bin(), get_wupserver_bin_len());
+		section_write_word(ios_elf_start, 0x0510E56C, 0x47700000); // bx lr
+		section_write(ios_elf_start, wupserver_addr, get_wupserver_bin(), get_wupserver_bin_len());
 
 		// apply IOS ELF launch hook (thanks dimok!)
 		section_write_word(ios_elf_start, 0x0812A120, ARM_BL(0x0812A120, kernel_launch_ios));

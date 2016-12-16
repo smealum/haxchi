@@ -16,10 +16,15 @@ FIRMWARE = 550
 
 all: clean setup main
 
-$(CURDIR)/payload/arm_kernel_bin.h:  $(CURDIR)/payload/wupserver_bin.h $(CURDIR)/payload/arm_user_bin.h
+$(CURDIR)/payload/arm_kernel_bin.h:  $(CURDIR)/payload/titleprot_bin.h $(CURDIR)/payload/wupserver_bin.h $(CURDIR)/payload/arm_user_bin.h
 	@$(MAKE) --no-print-directory -C $(CURDIR)/arm_kernel -f  $(CURDIR)/arm_kernel/Makefile
 	@-mkdir -p $(CURDIR)/payload
 	@cp -p $(CURDIR)/arm_kernel/arm_kernel_bin.h $@
+
+$(CURDIR)/payload/titleprot_bin.h:
+	@$(MAKE) --no-print-directory -C $(CURDIR)/titleprot -f  $(CURDIR)/titleprot/Makefile
+	@-mkdir -p $(CURDIR)/payload
+	@cp -p $(CURDIR)/titleprot/titleprot_bin.h $@
 
 $(CURDIR)/payload/wupserver_bin.h:
 	@$(MAKE) --no-print-directory -C $(CURDIR)/../../wupserver -f  $(CURDIR)/../../wupserver/Makefile
@@ -46,5 +51,6 @@ clean:
 	rm -rf $(build) payload
 	rm -rf CBHC.elf CBHC.map
 	$(MAKE) --no-print-directory -C $(CURDIR)/arm_user -f  $(CURDIR)/arm_user/Makefile clean
-	@$(MAKE) --no-print-directory -C $(CURDIR)/../../wupserver -f  $(CURDIR)/../../wupserver/Makefile clean
+	$(MAKE) --no-print-directory -C $(CURDIR)/titleprot -f  $(CURDIR)/titleprot/Makefile clean
+	$(MAKE) --no-print-directory -C $(CURDIR)/../../wupserver -f  $(CURDIR)/../../wupserver/Makefile clean
 	$(MAKE) --no-print-directory -C $(CURDIR)/arm_kernel -f  $(CURDIR)/arm_kernel/Makefile clean

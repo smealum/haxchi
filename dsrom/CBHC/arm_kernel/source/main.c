@@ -3,7 +3,7 @@
 #include "reload.h"
 #include "elf_patcher.h"
 #include "../../payload/arm_user_bin.h"
-#include "wupserver.h"
+#include "getbins.h"
 static const char repairData_set_fault_behavior[] = {
 	0xE1,0x2F,0xFF,0x1E,0xE9,0x2D,0x40,0x30,0xE5,0x93,0x20,0x00,0xE1,0xA0,0x40,0x00,
 	0xE5,0x92,0x30,0x54,0xE1,0xA0,0x50,0x01,0xE3,0x53,0x00,0x01,0x0A,0x00,0x00,0x02,
@@ -43,7 +43,10 @@ static const char os_launch_hook[] = {
 
 static const char sd_path[] = "/vol/sdcard";
 
-#define wupserver_phys (0x0510E570 - 0x05100000 + 0x13D80000)
+#define LAUNCH_SYSMENU 0
+#define LAUNCH_HBL 1
+#define LAUNCH_MOCHA 2
+#define LAUNCH_CFW_IMG 3
 
 int _main()
 {
@@ -57,14 +60,17 @@ int _main()
 
 	unsigned int control_register = disable_mmu();
 
+	/* copy in ds vc title id to protect from moving/deleting */
+	kernel_memcpy((void*)(get_titleprot_bin()+get_titleprot_bin_len()-8), (void*)0x01E70108, 4);
+
+	/* get value CBHC used to boot up */
+	unsigned int launchmode = *(volatile u32*)0x01E7010C;
+
 	/* Save the request handle so we can reply later */
 	*(volatile u32*)0x01E10000 = *(volatile u32*)0x1016AD18;
 
 	/* Patch kernel_error_handler to BX LR immediately */
 	*(volatile u32*)0x08129A24 = 0xE12FFF1E;
-
-	/* apply IOS ELF launch hook (thanks dimok!) */
-	*(volatile u32*)0x0812A120 = ARM_BL(0x0812A120, kernel_launch_ios);
 
 	void * pset_fault_behavior = (void*)0x081298BC;
 	kernel_memcpy(pset_fault_behavior, (void*)repairData_set_fault_behavior, sizeof(repairData_set_fault_behavior));
@@ -79,61 +85,75 @@ int _main()
 	void * pUserBinDest = (void*)0x101312D0;
 	kernel_memcpy(pUserBinDest, (void*)pUserBinSource, sizeof(arm_user_bin));
 
-	// overwrite mcp_d_r code with wupserver
-	*(unsigned int*)(0x0510E56C - 0x05100000 + 0x13D80000) = 0x47700000; //bx lr
-	kernel_memcpy((void*)wupserver_phys, get_wupserver_bin(), get_wupserver_bin_len());
-	invalidate_dcache((u32)wupserver_phys, get_wupserver_bin_len());
-	invalidate_icache();
+	if(launchmode != LAUNCH_MOCHA)
+	{
+		// nop out memcmp hash checks
+		*(volatile u32*)(0x040017E0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)(0x040019C4 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)(0x04001BB0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)(0x04001D40 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
 
-	// replace ioctl 0x62 code with jump to wupserver
-	*(unsigned int*)(0x05026BA8 - 0x05000000 + 0x081C0000) = 0x47780000; // bx pc
-	*(unsigned int*)(0x05026BAC - 0x05000000 + 0x081C0000) = 0xE59F1000; // ldr r1, [pc]
-	*(unsigned int*)(0x05026BB0 - 0x05000000 + 0x081C0000) = 0xE12FFF11; // bx r1
-	*(unsigned int*)(0x05026BB4 - 0x05000000 + 0x081C0000) = 0x0510E570; // wupserver code
+		// patch OS launch sig check
+		*(volatile u32*)(0x0500A818 - 0x05000000 + 0x081C0000) = 0x20002000; // mov r0, #0; mov r0, #0
 
-	// fix 10 minute timeout that crashes MCP after 10 minutes of booting
-	*(volatile u32*)(0x05022474 - 0x05000000 + 0x081C0000) = 0xFFFFFFFF; // NEW_TIMEOUT
+		// patch MCP authentication check
+		*(volatile u32*)(0x05014CAC - 0x05000000 + 0x081C0000) = 0x20004770; // mov r0, #0; bx lr
 
-	// patch cached cert check
-	*(volatile u32*)(0x05054D6C - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, 0
-	*(volatile u32*)(0x05054D70 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
+		// fix 10 minute timeout that crashes MCP after 10 minutes of booting
+		*(volatile u32*)(0x05022474 - 0x05000000 + 0x081C0000) = 0xFFFFFFFF; // NEW_TIMEOUT
 
-	// patch cert verification
-	*(volatile u32*)(0x05052A90 - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, #0
-	*(volatile u32*)(0x05052A94 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
+		// replace ioctl 0x62 code with jump to wupserver
+		*(volatile u32*)(0x05026BA8 - 0x05000000 + 0x081C0000) = 0x47780000; // bx pc
+		*(volatile u32*)(0x05026BAC - 0x05000000 + 0x081C0000) = 0xE59F1000; // ldr r1, [pc]
+		*(volatile u32*)(0x05026BB0 - 0x05000000 + 0x081C0000) = 0xE12FFF11; // bx r1
+		*(volatile u32*)(0x05026BB4 - 0x05000000 + 0x081C0000) = wupserver_addr; // wupserver code
 
-	// patch MCP authentication check
-	*(volatile u32*)(0x05014CAC - 0x05000000 + 0x081C0000) = 0x20004770; // mov r0, #0; bx lr
+		// patch cert verification
+		*(volatile u32*)(0x05052A90 - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)(0x05052A94 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
 
-	// patch IOSC_VerifyPubkeySign to always succeed
-	*(volatile u32*)(0x05052C44 - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, #0
-	*(volatile u32*)(0x05052C48 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
+		// patch IOSC_VerifyPubkeySign to always succeed
+		*(volatile u32*)(0x05052C44 - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)(0x05052C48 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
 
-	// patch OS launch sig check
-	*(volatile u32*)(0x0500A818 - 0x05000000 + 0x081C0000) = 0x20002000; // mov r0, #0; mov r0, #0
+		// patch cached cert check
+		*(volatile u32*)(0x05054D6C - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, 0
+		*(volatile u32*)(0x05054D70 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
 
-	// patch default title id
-	*(volatile u32*)(0x050B817C - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70100;
-	*(volatile u32*)(0x050B8180 - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70104;
+		// change system.xml to syshax.xml
+		*(volatile u32*)(0x050600F0 - 0x05060000 + 0x08220000) = 0x79736861; // ysha
+		*(volatile u32*)(0x050600F4 - 0x05060000 + 0x08220000) = 0x782E786D; // x.xm
 
-	// allow custom bootLogoTex and bootMovie.h264
-	*(volatile u32*)(0xE0030D68 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
-	*(volatile u32*)(0xE0030D34 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)(0x05060114 - 0x05060000 + 0x08220000) = 0x79736861; // ysha
+		*(volatile u32*)(0x05060118 - 0x05060000 + 0x08220000) = 0x782E786D; // x.xm
 
-	// allow any region title launch
-	*(volatile u32*)(0xE0030498 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
+		// jump to titleprot code (titleprot_addr+4)
+		*(volatile u32*)(0x05107F70 - 0x05100000 + 0x13D80000) = 0xF005FD0A; //bl (titleprot_addr+4)
+		// overwrite mcp_d_r code with titleprot
+		*(volatile u32*)titleprot_phys = 0x20004770; // mov r0, #0; bx lr
+		kernel_memcpy((void*)(titleprot_phys+4), get_titleprot_bin(), get_titleprot_bin_len());
+		invalidate_dcache((u32)(titleprot_phys+4), get_titleprot_bin_len());
+		invalidate_icache();
 
-	// force check USB storage on load
-	*(volatile u32*)(0xE012202C - 0xE0000000 + 0x12900000) = 0x00000001; // find USB flag
+		// overwrite mcp_d_r code with wupserver
+		*(volatile u32*)(0x0510E56C - 0x05100000 + 0x13D80000) = 0x47700000; //bx lr
+		kernel_memcpy((void*)wupserver_phys, get_wupserver_bin(), get_wupserver_bin_len());
+		invalidate_dcache((u32)wupserver_phys, get_wupserver_bin_len());
+		invalidate_icache();
 
-	// nop out memcmp hash checks
-	*(volatile u32*)(0x040017E0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-	*(volatile u32*)(0x040019C4 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-	*(volatile u32*)(0x04001BB0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-	*(volatile u32*)(0x04001D40 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
+		// apply IOS ELF launch hook (thanks dimok!)
+		*(volatile u32*)0x0812A120 = ARM_BL(0x0812A120, kernel_launch_ios);
+
+		// allow any region title launch
+		*(volatile u32*)(0xE0030498 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
+
+		// allow custom bootLogoTex and bootMovie.h264
+		*(volatile u32*)(0xE0030D68 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)(0xE0030D34 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
+	}
 
 	//custom fw.img reboot
-	if(*(volatile u32*)0x01E70120 == 1)
+	if(launchmode == LAUNCH_CFW_IMG)
 	{
 		int i;
 		for (i = 0; i < 32; i++)
@@ -148,12 +168,12 @@ int _main()
 			((char*)(0x05059938 - 0x05000000 + 0x081C0000))[i] = os_launch_hook[i];
 	}
 
-	// change system.xml to syshax.xml
-	*(volatile u32*)(0x050600F0 - 0x05060000 + 0x08220000) = 0x79736861; //ysha
-	*(volatile u32*)(0x050600F4 - 0x05060000 + 0x08220000) = 0x782E786D; //x.xm
+	// patch default title id to system menu
+	*(volatile u32*)(0x050B817C - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70100;
+	*(volatile u32*)(0x050B8180 - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70104;
 
-	*(volatile u32*)(0x05060114 - 0x05060000 + 0x08220000) = 0x79736861; //ysha
-	*(volatile u32*)(0x05060118 - 0x05060000 + 0x08220000) = 0x782E786D; //x.xm
+	// force check USB storage on load
+	*(volatile u32*)(0xE012202C - 0xE0000000 + 0x12900000) = 0x00000001; // find USB flag
 
 	*(volatile u32*)(0x1555500) = 0;
 
