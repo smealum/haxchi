@@ -2,7 +2,7 @@ PATH := $(DEVKITPPC)/bin:$(PATH)
 PREFIX ?= powerpc-eabi-
 CC = $(PREFIX)gcc
 AS = $(PREFIX)gcc
-CFLAGS = -std=gnu99 -O3 -nostdinc -fno-builtin -I$(DEVKITPPC)/lib/gcc/powerpc-eabi/6.2.0/include -I$(DEVKITPPC)/powerpc-eabi/include
+CFLAGS = -std=gnu89 -O3 -Wall -nostdinc -fno-builtin -I$(DEVKITPPC)/lib/gcc/powerpc-eabi/6.2.0/include -I$(DEVKITPPC)/powerpc-eabi/include
 ASFLAGS = -mregnames -x assembler-with-cpp
 LD = $(PREFIX)ld
 OBJCOPY = $(PREFIX)objcopy
@@ -24,9 +24,9 @@ main:
 	$(AS) $(ASFLAGS) -DVER=$(FIRMWARE) -c $(project)/crt0.S
 	cp -r $(root)/*.o $(build)
 	rm $(root)/*.o
-	$(LD) -o option_select.elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map option_select.map
-	$(OBJCOPY) option_select.elf -S -O binary ../option_select.bin
+	$(LD) -o cbhc_menu.elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map cbhc_menu.map
+	$(OBJCOPY) cbhc_menu.elf -S -O binary ../cbhc_menu.bin
 
 clean:
-	rm -rf $(build)
-	rm -rf option_select.elf option_select.map
+	rm -rf $(build) payload
+	rm -rf cbhc_menu.elf cbhc_menu.map

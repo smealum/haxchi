@@ -1,6 +1,9 @@
 #include "../../payload/titleprot_bin.h"
 #include "../../payload/wupserver_bin.h"
 
+//not really a bin but still a const val
+const int from_cbhc = 1;
+
 const unsigned char *get_titleprot_bin()
 {
 	return titleprot_bin;

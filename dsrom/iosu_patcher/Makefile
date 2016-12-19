@@ -6,7 +6,7 @@ CFLAGS = -std=gnu89 -O3 -Wall -nostdinc -fno-builtin -I$(DEVKITPPC)/lib/gcc/powe
 ASFLAGS = -mregnames -x assembler-with-cpp
 LD = $(PREFIX)ld
 OBJCOPY = $(PREFIX)objcopy
-LDFLAGS=-Ttext 1808000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/6.2.0 -L$(DEVKITPPC)/powerpc-eabi/lib -lgcc -lc
+LDFLAGS=-Ttext 1804000 -L$(DEVKITPPC)/lib/gcc/powerpc-eabi/6.2.0 -L$(DEVKITPPC)/powerpc-eabi/lib -lgcc -lc
 OBJDUMP ?= $(PREFIX)objdump
 project	:=	.
 root	:=	$(CURDIR)
@@ -44,12 +44,12 @@ main: $(CURDIR)/payload/arm_kernel_bin.h
 	$(AS) $(ASFLAGS) -DVER=$(FIRMWARE) -c $(project)/crt0.S
 	cp -r $(root)/*.o $(build)
 	rm $(root)/*.o
-	$(LD) -o CBHC.elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map CBHC.map
-	$(OBJCOPY) CBHC.elf -S -O binary ../CBHC.bin
+	$(LD) -o iosu_patcher.elf $(build)/crt0.o `find $(build) -name "*.o" ! -name "crt0.o"` $(LDFLAGS) -Map iosu_patcher.map
+	$(OBJCOPY) iosu_patcher.elf -S -O binary ../iosu_patcher.bin
 
 clean:
 	rm -rf $(build) payload
-	rm -rf CBHC.elf CBHC.map
+	rm -rf iosu_patcher.elf iosu_patcher.map
 	$(MAKE) --no-print-directory -C $(CURDIR)/arm_user -f  $(CURDIR)/arm_user/Makefile clean
 	$(MAKE) --no-print-directory -C $(CURDIR)/titleprot -f  $(CURDIR)/titleprot/Makefile clean
 	$(MAKE) --no-print-directory -C $(CURDIR)/../../wupserver -f  $(CURDIR)/../../wupserver/Makefile clean

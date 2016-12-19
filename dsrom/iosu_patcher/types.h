@@ -17,6 +17,4 @@ typedef _Bool bool;
 #define false 0
 #define null 0
 
-#define NULL (void*)0
-
 #endif /* TYPES_H */

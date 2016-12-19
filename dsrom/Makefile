@@ -54,10 +54,10 @@ zeldaph: setup_zeldaph zeldaph.nds
 zeldast: setup_zeldast zeldast.nds
 
 setup:
-	@cd option_select && make && cd ..
+	@cd cbhc_menu && make && cd ..
 	@cd hbl_loader && make && cd ..
-	@cd cfw_booter && make && cd ..
-	@cd CBHC && make && cd ..
+	@cd iosu_patcher && make && cd ..
+	@cd option_select && make && cd ..
 
 setup_animalcrossing:
 	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
@@ -267,8 +267,8 @@ zeldast.zip:
 
 clean:
 	@rm -f *.bin *.nds ../installer/data/*.zip defines.s
-	@cd option_select && make clean && cd ..
+	@cd cbhc_menu && make clean && cd ..
 	@cd hbl_loader && make clean && cd ..
-	@cd cfw_booter && make clean && cd ..
-	@cd CBHC && make clean && cd ..
+	@cd iosu_patcher && make clean && cd ..
+	@cd option_select && make clean && cd ..
 	@echo "all cleaned up !"

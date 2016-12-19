@@ -4,6 +4,7 @@
 #include "elf_patcher.h"
 #include "../../payload/arm_user_bin.h"
 #include "getbins.h"
+
 static const char repairData_set_fault_behavior[] = {
 	0xE1,0x2F,0xFF,0x1E,0xE9,0x2D,0x40,0x30,0xE5,0x93,0x20,0x00,0xE1,0xA0,0x40,0x00,
 	0xE5,0x92,0x30,0x54,0xE1,0xA0,0x50,0x01,0xE3,0x53,0x00,0x01,0x0A,0x00,0x00,0x02,
@@ -41,7 +42,7 @@ static const char os_launch_hook[] = {
 	0x05, 0x0b, 0xcf, 0xfc, 0x05, 0x05, 0x99, 0x70, 0x05, 0x05, 0x99, 0x7e,
 };
 
-static const char sd_path[] = "/vol/sdcard";
+extern const int from_cbhc;
 
 #define LAUNCH_SYSMENU 0
 #define LAUNCH_HBL 1
@@ -63,8 +64,11 @@ int _main()
 	/* copy in ds vc title id to protect from moving/deleting */
 	kernel_memcpy((void*)(get_titleprot_bin()+get_titleprot_bin_len()-8), (void*)0x01E70108, 4);
 
-	/* get value CBHC used to boot up */
-	unsigned int launchmode = *(volatile u32*)0x01E7010C;
+	/* save if we are booted from CBHC */
+	kernel_memcpy((void*)(&from_cbhc), (void*)0x01E70110, 4);
+
+	/* get value CBHC or Haxchi used to boot up */
+	unsigned int launchmode = *(volatile int*)0x01E7010C;
 
 	/* Save the request handle so we can reply later */
 	*(volatile u32*)0x01E10000 = *(volatile u32*)0x1016AD18;
@@ -95,7 +99,10 @@ int _main()
 
 		// patch OS launch sig check
 		*(volatile u32*)(0x0500A818 - 0x05000000 + 0x081C0000) = 0x20002000; // mov r0, #0; mov r0, #0
+	}
 
+	if(launchmode != LAUNCH_MOCHA && launchmode != LAUNCH_CFW_IMG)
+	{
 		// patch MCP authentication check
 		*(volatile u32*)(0x05014CAC - 0x05000000 + 0x081C0000) = 0x20004770; // mov r0, #0; bx lr
 
@@ -120,12 +127,15 @@ int _main()
 		*(volatile u32*)(0x05054D6C - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, 0
 		*(volatile u32*)(0x05054D70 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
 
-		// change system.xml to syshax.xml
-		*(volatile u32*)(0x050600F0 - 0x05060000 + 0x08220000) = 0x79736861; // ysha
-		*(volatile u32*)(0x050600F4 - 0x05060000 + 0x08220000) = 0x782E786D; // x.xm
+		if(from_cbhc) // coldboot specific patches
+		{
+			// change system.xml to syshax.xml
+			*(volatile u32*)(0x050600F0 - 0x05060000 + 0x08220000) = 0x79736861; // ysha
+			*(volatile u32*)(0x050600F4 - 0x05060000 + 0x08220000) = 0x782E786D; // x.xm
 
-		*(volatile u32*)(0x05060114 - 0x05060000 + 0x08220000) = 0x79736861; // ysha
-		*(volatile u32*)(0x05060118 - 0x05060000 + 0x08220000) = 0x782E786D; // x.xm
+			*(volatile u32*)(0x05060114 - 0x05060000 + 0x08220000) = 0x79736861; // ysha
+			*(volatile u32*)(0x05060118 - 0x05060000 + 0x08220000) = 0x782E786D; // x.xm
+		}
 
 		// jump to titleprot code (titleprot_addr+4)
 		*(volatile u32*)(0x05107F70 - 0x05100000 + 0x13D80000) = 0xF005FD0A; //bl (titleprot_addr+4)
@@ -157,8 +167,8 @@ int _main()
 	{
 		int i;
 		for (i = 0; i < 32; i++)
-			if (i < 11)
-				((char*)(0x050663B4 - 0x05000000 + 0x081C0000))[i] = sd_path[i];
+			if (i < 31)
+				((char*)(0x050663B4 - 0x05000000 + 0x081C0000))[i] = ((char*)0x01E70000)[i];
 			else
 				((char*)(0x050663B4 - 0x05000000 + 0x081C0000))[i] = (char)0;
 
@@ -168,12 +178,15 @@ int _main()
 			((char*)(0x05059938 - 0x05000000 + 0x081C0000))[i] = os_launch_hook[i];
 	}
 
-	// patch default title id to system menu
-	*(volatile u32*)(0x050B817C - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70100;
-	*(volatile u32*)(0x050B8180 - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70104;
+	if(from_cbhc) // coldboot specific patches
+	{
+		// patch default title id to system menu
+		*(volatile u32*)(0x050B817C - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70100;
+		*(volatile u32*)(0x050B8180 - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70104;
 
-	// force check USB storage on load
-	*(volatile u32*)(0xE012202C - 0xE0000000 + 0x12900000) = 0x00000001; // find USB flag
+		// force check USB storage on load
+		*(volatile u32*)(0xE012202C - 0xE0000000 + 0x12900000) = 0x00000001; // find USB flag
+	}
 
 	*(volatile u32*)(0x1555500) = 0;
 

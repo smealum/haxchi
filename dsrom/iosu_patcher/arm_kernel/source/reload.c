@@ -6,6 +6,7 @@
 #include "getbins.h"
 
 extern char __file_start, __file_end;
+extern const int from_cbhc;
 
 void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 {
@@ -54,12 +55,15 @@ void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 		section_write_word(ios_elf_start, 0x05054D6C, 0xE3A00000); // mov r0, 0
 		section_write_word(ios_elf_start, 0x05054D70, 0xE12FFF1E); // bx lr
 
-		// change system.xml to syshax.xml
-		section_write_word(ios_elf_start, 0x050600F0, 0x79736861); // ysha
-		section_write_word(ios_elf_start, 0x050600F4, 0x782E786D); // x.xm
+		if(from_cbhc) // coldboot specific patches
+		{
+			// change system.xml to syshax.xml
+			section_write_word(ios_elf_start, 0x050600F0, 0x79736861); // ysha
+			section_write_word(ios_elf_start, 0x050600F4, 0x782E786D); // x.xm
 
-		section_write_word(ios_elf_start, 0x05060114, 0x79736861); // ysha
-		section_write_word(ios_elf_start, 0x05060118, 0x782E786D); // x.xm
+			section_write_word(ios_elf_start, 0x05060114, 0x79736861); // ysha
+			section_write_word(ios_elf_start, 0x05060118, 0x782E786D); // x.xm
+		}
 
 		// jump to titleprot code (titleprot_addr+4)
 		section_write_word(ios_elf_start, 0x05107F70, 0xF005FD0A); //bl (titleprot_addr+4)

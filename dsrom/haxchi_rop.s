@@ -3,8 +3,8 @@
 
 ; more useful definitions
 HBL_LOADER_ADR equ (0x01800000)
+IOSU_PATCHER_ADR equ (0x01804000)
 SELECTOR_ADDRESS equ (0x01808000)
-CFW_BOOTER_ADR equ (0x0180C000)
 
 NERD_THREAD0OBJECT equ (HAX_TARGET_ADDRESS - 0x1000)
 NERD_THREAD2OBJECT equ (HAX_TARGET_ADDRESS - 0x2000)
@@ -224,13 +224,13 @@ rop_start:
 
 		; memcpy code
 		call_func MEMCPY, HBL_LOADER_ADR, hbl_loader, hbl_loader_end - hbl_loader, 0x0
-		call_func MEMCPY, SELECTOR_ADDRESS, code, code_end - code, 0x0
-		call_func MEMCPY, CFW_BOOTER_ADR, cfw_booter, cfw_booter_end - cfw_booter, 0x0
-		call_func DC_FLUSHRANGE, HBL_LOADER_ADR, 0xE000, 0x0, 0x0
+		call_func MEMCPY, IOSU_PATCHER_ADR, iosu_patcher, iosu_patcher_end - iosu_patcher, 0x0
+		call_func MEMCPY, SELECTOR_ADDRESS, option_select, option_select_end - option_select, 0x0
+		call_func DC_FLUSHRANGE, HBL_LOADER_ADR, 0xC000, 0x0, 0x0
 
 		; switch codegen to RX
 		call_func OSCODEGEN_SWITCHSECMODE, 0x1, 0x0, 0x0, 0x0
-		call_func IC_INVALIDATERANGE, HBL_LOADER_ADR, 0xE000, 0x0, 0x0
+		call_func IC_INVALIDATERANGE, HBL_LOADER_ADR, 0xC000, 0x0, 0x0
 
 		; execute option_select in codegen
 		.word SELECTOR_ADDRESS
@@ -260,16 +260,16 @@ rop_start:
 		.word 0x00000010 ; thread prio
 		.halfword 0x0004 ; thread affinity (core2)
 
-	code:
-		.incbin "code550.bin"
-	code_end:
-
 	hbl_loader:
 		.incbin "hbl_loader.bin"
 	hbl_loader_end:
 
-	cfw_booter:
-		.incbin "cfw_booter.bin"
-	cfw_booter_end:
+	iosu_patcher:
+		.incbin "iosu_patcher.bin"
+	iosu_patcher_end:
+
+	option_select:
+		.incbin "option_select.bin"
+	option_select_end:
 
 .Close

@@ -7,6 +7,7 @@
 #include <string.h>
 #include "types.h"
 #include "coreinit.h"
+#include "../global.h"
 
 typedef struct
 {
@@ -111,7 +112,7 @@ uint32_t __main(void)
 	void*(*MEMAllocFromDefaultHeap)(int size) = (void*)(*pMEMAllocFromDefaultHeap);
 	void(*MEMFreeToDefaultHeap)(void *ptr) = (void*)(*pMEMFreeToDefaultHeap);
 
-	int hbl = 1;
+	int launchmode = LAUNCH_HBL;
 	//default path goes to HBL
 	strcpy((void*)0xF5E70000,"/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf");
 
@@ -229,7 +230,7 @@ uint32_t __main(void)
 						}
 						else
 							__os_snprintf((void*)0xF5E70000,32,"/vol/sdcard");
-						hbl = 0;
+						launchmode = LAUNCH_CFW_IMG;
 						break;
 					}
 					else if(memcmp(FnameChar+fLen-4,".elf",5) == 0)
@@ -238,6 +239,12 @@ uint32_t __main(void)
 							__os_snprintf((void*)0xF5E70000,250,"/vol/external01%s",FnameChar);
 						else
 							__os_snprintf((void*)0xF5E70000,250,"/vol/external01/%s",FnameChar);
+						launchmode = LAUNCH_HBL;
+						break;
+					}
+					else if(memcmp(FnameChar+fLen-7,"sysmenu",8) == 0)
+					{
+						launchmode = LAUNCH_SYSMENU;
 						break;
 					}
 				}
@@ -256,7 +263,32 @@ fileEnd:
 	if(pBuffer)
 		MEMFreeToDefaultHeap(pBuffer);
 
-	DCStoreRange((void*)0xF5E70000,0x100);
-	uint32_t entry = (hbl ? 0x01800000 : 0x0180C000);
-	return entry;
+	if(launchmode == LAUNCH_HBL)
+		return 0x01800000;
+
+	//store path to sd fw.img for arm_kernel
+	if(launchmode == LAUNCH_CFW_IMG)
+		DCStoreRange((void*)0xF5E70000,0x100);
+
+	unsigned int sysapp_handle;
+	OSDynLoad_Acquire("sysapp.rpl", &sysapp_handle);
+	void (*SYSLaunchMenu)(void);
+	OSDynLoad_FindExport(sysapp_handle, 0,"SYSLaunchMenu", &SYSLaunchMenu);
+
+	int (*OSForceFullRelaunch)(void);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSForceFullRelaunch", &OSForceFullRelaunch);
+
+	void (*OSExitThread)(int);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSExitThread", &OSExitThread);
+
+	//do iosu patches
+	void (*patch_iosu)(unsigned int coreinit_handle, unsigned int sysapp_handle, int launchmode, int from_cbhc) = (void*)0x01804000;
+	patch_iosu(coreinit_handle, sysapp_handle, launchmode, 0);
+
+	if(launchmode == LAUNCH_CFW_IMG)
+		OSForceFullRelaunch();
+	SYSLaunchMenu();
+
+	OSExitThread(0);
+	return 0;
 }

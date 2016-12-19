@@ -3,7 +3,8 @@
 
 ; more useful definitions
 HBL_LOADER_ADR equ (0x01800000)
-CBHC_ADDR equ (0x01808000)
+IOSU_PATCHER_ADR equ (0x01804000)
+CBHC_MENU_ADDR equ (0x01808000)
 
 NERD_THREAD0OBJECT equ (HAX_TARGET_ADDRESS - 0x1000)
 NERD_THREAD2OBJECT equ (HAX_TARGET_ADDRESS - 0x2000)
@@ -223,15 +224,16 @@ rop_start:
 
 		; memcpy code
 		call_func MEMCPY, HBL_LOADER_ADR, hbl_loader, hbl_loader_end - hbl_loader, 0x0
-		call_func MEMCPY, CBHC_ADDR, cbhc, cbhc_end - cbhc, 0x0
-		call_func DC_FLUSHRANGE, HBL_LOADER_ADR, 0xFFE0, 0x0, 0x0
+		call_func MEMCPY, IOSU_PATCHER_ADR, iosu_patcher, iosu_patcher_end - iosu_patcher, 0x0
+		call_func MEMCPY, CBHC_MENU_ADDR, cbhc_menu, cbhc_menu_end - cbhc_menu, 0x0
+		call_func DC_FLUSHRANGE, HBL_LOADER_ADR, 0xC000, 0x0, 0x0
 
 		; switch codegen to RX
 		call_func OSCODEGEN_SWITCHSECMODE, 0x1, 0x0, 0x0, 0x0
-		call_func IC_INVALIDATERANGE, HBL_LOADER_ADR, 0xFFE0, 0x0, 0x0
+		call_func IC_INVALIDATERANGE, HBL_LOADER_ADR, 0xC000, 0x0, 0x0
 
 		; execute option_select in codegen
-		.word CBHC_ADDR
+		.word CBHC_MENU_ADDR
 	core0rop_end:
 
 	; core 0 thread params
@@ -262,8 +264,12 @@ rop_start:
 		.incbin "hbl_loader.bin"
 	hbl_loader_end:
 
-	cbhc:
-		.incbin "cbhc.bin"
-	cbhc_end:
+	iosu_patcher:
+		.incbin "iosu_patcher.bin"
+	iosu_patcher_end:
+
+	cbhc_menu:
+		.incbin "cbhc_menu.bin"
+	cbhc_menu_end:
 
 .Close
