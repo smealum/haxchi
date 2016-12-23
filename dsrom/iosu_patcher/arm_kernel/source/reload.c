@@ -10,12 +10,12 @@ extern const int from_cbhc;
 
 void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 {
-    void (*kernel_launch_bootrom)(u32 launch_address, u32 L, u32 C, u32 H) = (void*)0x0812A050;
+	void (*kernel_launch_bootrom)(u32 launch_address, u32 L, u32 C, u32 H) = (void*)0x0812A050;
 
-    if(*(u32*)(launch_address - 0x300 + 0x1AC) == 0x00DFD000)
-    {
-        int level = disable_interrupts();
-        unsigned int control_register = disable_mmu();
+	if(*(u32*)(launch_address - 0x300 + 0x1AC) == 0x00DFD000)
+	{
+		int level = disable_interrupts();
+		unsigned int control_register = disable_mmu();
 
 		u32 ios_elf_start = launch_address + 0x804 - 0x300;
 
@@ -55,6 +55,9 @@ void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 		section_write_word(ios_elf_start, 0x05054D6C, 0xE3A00000); // mov r0, 0
 		section_write_word(ios_elf_start, 0x05054D70, 0xE12FFF1E); // bx lr
 
+		// redirect mcp_debug_print to mcp_syslog_print (0x0503DCF0)
+		section_write_word(ios_elf_start, 0x05055454, 0xEBFFA225); // bl 0x0503DCF0
+
 		if(from_cbhc) // coldboot specific patches
 		{
 			// change system.xml to syshax.xml
@@ -88,9 +91,9 @@ void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 		section_write_word(ios_elf_start, 0xE0030D68, 0xE3A00000); // mov r0, #0
 		section_write_word(ios_elf_start, 0xE0030D34, 0xE3A00000); // mov r0, #0
 
-        restore_mmu(control_register);
-        enable_interrupts(level);
-    }
+		restore_mmu(control_register);
+		enable_interrupts(level);
+	}
 
-    kernel_launch_bootrom(launch_address, L, C, H);
+	kernel_launch_bootrom(launch_address, L, C, H);
 }

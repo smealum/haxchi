@@ -11,6 +11,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
+#include <iosuhax.h>
 #include "dynamic_libs/os_functions.h"
 #include "dynamic_libs/gx2_functions.h"
 #include "dynamic_libs/sys_functions.h"
@@ -19,8 +20,8 @@
 #include "common/common.h"
 #include "main.h"
 #include "exploit.h"
-#include "iosuhax.h"
 #include "gameList.h"
+#include "../payload/wupserver_bin.h"
 
 static const char *sdCardVolPath = "/vol/storage_sdcard";
 #ifdef CB
@@ -125,9 +126,9 @@ int availSort(const void *c1, const void *c2)
 void printhdr_noflip()
 {
 #ifdef CB
-	println_noflip(0,"CBHC v1.4u1 by FIX94");
+	println_noflip(0,"CBHC v1.4u2 by FIX94");
 #else
-	println_noflip(0,"Haxchi v2.4 by FIX94");
+	println_noflip(0,"Haxchi v2.4u1 by FIX94");
 #endif
 	println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 }
@@ -380,6 +381,9 @@ int Menu_Main(void)
 	if(res < 0)
 	{
 		println(line++,"Doing IOSU Exploit...");
+		*(volatile unsigned int*)0xF5E70000 = wupserver_bin_len;
+		memcpy((void*)0xF5E70020, &wupserver_bin, wupserver_bin_len);
+		DCStoreRange((void*)0xF5E70000, wupserver_bin_len + 0x40);
 		IOSUExploit();
 		//done with iosu exploit, take over mcp
 		if(MCPHookOpen() < 0)
@@ -839,8 +843,11 @@ prgEnd:
 			IOSUHAX_FSA_CloseFile(fsaFd, sdFd);
 		if(sdMounted)
 			IOSUHAX_FSA_Unmount(fsaFd, sdCardVolPath, 2);
-		if(IOSUHAX_FSA_FlushVolume(fsaFd, "/vol/storage_mlc01") == 0)
-			println(line++, "Flushed NAND Cache!");
+		if(mcp_hook_fd >= 0)
+		{
+			if(IOSUHAX_FSA_FlushVolume(fsaFd, "/vol/storage_mlc01") == 0)
+				println(line++, "Flushed NAND Cache!");
+		}
 		IOSUHAX_FSA_Close(fsaFd);
 	}
 	//close out iosuhax

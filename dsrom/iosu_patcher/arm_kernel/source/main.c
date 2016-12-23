@@ -127,6 +127,9 @@ int _main()
 		*(volatile u32*)(0x05054D6C - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, 0
 		*(volatile u32*)(0x05054D70 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
 
+		// redirect mcp_debug_print to mcp_syslog_print (0x0503DCF0)
+		*(volatile u32*)(0x05055454 - 0x05000000 + 0x081C0000) = 0xEBFFA225; // bl 0x0503DCF0
+
 		if(from_cbhc) // coldboot specific patches
 		{
 			// change system.xml to syshax.xml

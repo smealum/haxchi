@@ -1,7 +1,5 @@
 #include "types.h"
-#include "utils.h"
 #include "../../payload/arm_user_bin.h"
-#include "../../payload/wupserver_bin.h"
 
 static const char repairData_set_fault_behavior[] = {
 	0xE1,0x2F,0xFF,0x1E,0xE9,0x2D,0x40,0x30,0xE5,0x93,0x20,0x00,0xE1,0xA0,0x40,0x00,
@@ -40,20 +38,8 @@ static const char os_launch_hook[] = {
 	0x05, 0x0b, 0xcf, 0xfc, 0x05, 0x05, 0x99, 0x70, 0x05, 0x05, 0x99, 0x7e,
 };
 
-//static const char sd_path[] = "/vol/sdcard";
-
-static unsigned int __attribute__((noinline)) disable_mmu(void)
-{
-	unsigned int control_register = 0;
-	asm volatile("MRC p15, 0, %0, c1, c0, 0" : "=r" (control_register));
-	asm volatile("MCR p15, 0, %0, c1, c0, 0" : : "r" (control_register & 0xFFFFEFFA));
-	return control_register;
-}
-
-static void __attribute__((noinline)) restore_mmu(unsigned int control_register)
-{
-	asm volatile("MCR p15, 0, %0, c1, c0, 0" : : "r" (control_register));
-}
+unsigned int disable_mmu(void);
+void restore_mmu(unsigned int control_register);
 
 int _main()
 {
@@ -89,34 +75,22 @@ int _main()
 	void * pUserBinDest = (void*)0x101312D0;
 	kernel_memcpy(pUserBinDest, (void*)pUserBinSource, sizeof(arm_user_bin));
 
+	// take wupserver from mem1
+	u32 wupserver_bin_len = *(volatile u32*)0x01E70000;
+	void *wupserver_bin = (void*)0x01E70020;
+
 	// overwrite mcp_d_r code with wupserver
-	*(unsigned int*)(0x0510E56C - 0x05100000 + 0x13D80000) = 0x47700000; //bx lr
-	void * test = (void*)(0x0510E570 - 0x05100000 + 0x13D80000);
-	kernel_memcpy(test, (void*)wupserver_bin, sizeof(wupserver_bin));
-	invalidate_dcache((u32)test, sizeof(wupserver_bin));
+	*(volatile u32*)(0x0510E56C - 0x05100000 + 0x13D80000) = 0x47700000; // bx lr
+	void *wupserver_dst = (void*)(0x0510E570 - 0x05100000 + 0x13D80000);
+	kernel_memcpy(wupserver_dst, wupserver_bin, wupserver_bin_len);
+	invalidate_dcache((u32)wupserver_dst, wupserver_bin_len);
 	invalidate_icache();
 
 	// replace ioctl 0x62 code with jump to wupserver
-	*(unsigned int*)(0x05026BA8 - 0x05000000 + 0x081C0000) = 0x47780000; // bx pc
-	*(unsigned int*)(0x05026BAC - 0x05000000 + 0x081C0000) = 0xE59F1000; // ldr r1, [pc]
-	*(unsigned int*)(0x05026BB0 - 0x05000000 + 0x081C0000) = 0xE12FFF11; // bx r1
-	*(unsigned int*)(0x05026BB4 - 0x05000000 + 0x081C0000) = 0x0510E570; // wupserver code
-
-	*(unsigned int*)(0x050282AE - 0x05000000 + 0x081C0000) = 0xF031FB43; // bl launch_os_hook
-
-	*(unsigned int*)(0x05052C44 - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, #0
-	*(unsigned int*)(0x05052C48 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
-
-	*(unsigned int*)(0x0500A818 - 0x05000000 + 0x081C0000) = 0x20002000; // mov r0, #0; mov r0, #0
-
-	*(unsigned int*)(0x040017E0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-	*(unsigned int*)(0x040019C4 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-	*(unsigned int*)(0x04001BB0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-	*(unsigned int*)(0x04001D40 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-
-	int i;
-	for (i = 0; i < sizeof(os_launch_hook); i++)
-		((char*)(0x05059938 - 0x05000000 + 0x081C0000))[i] = os_launch_hook[i];
+	*(volatile u32*)(0x05026BA8 - 0x05000000 + 0x081C0000) = 0x47780000; // bx pc
+	*(volatile u32*)(0x05026BAC - 0x05000000 + 0x081C0000) = 0xE59F1000; // ldr r1, [pc]
+	*(volatile u32*)(0x05026BB0 - 0x05000000 + 0x081C0000) = 0xE12FFF11; // bx r1
+	*(volatile u32*)(0x05026BB4 - 0x05000000 + 0x081C0000) = 0x0510E570; // wupserver code
 
 	*(int*)(0x1555500) = 0;
 
