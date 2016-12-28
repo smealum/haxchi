@@ -33,6 +33,14 @@
 #define enable_interrupts           ((int(*)(int))0x0812E78C)
 #define kernel_bsp_command_5        ((int (*)(const char*, int offset, const char*, int size, void *buffer))0x0812EC40)
 
+#define crypto_phys(addr) ((u32)(addr) - 0x04000000 + 0x08280000)
+#define mcp_phys(addr) ((u32)(addr) - 0x05000000 + 0x081C0000)
+#define mcp_rodata_phys(addr) ((u32)(addr) - 0x05060000 + 0x08220000)
+#define mcp_data_phys(addr) ((u32)(addr) - 0x05074000 + 0x08234000)
+#define mcp_d_r_phys(addr) ((u32)(addr) - 0x05100000 + 0x13D80000)
+#define kernel_phys(addr) ((u32)(addr)) //just here for completion
+#define acp_phys(addr) ((u32)(addr) - 0xE0000000 + 0x12900000)
+
 void reverse_memcpy(void* dest, const void* src, unsigned int size);
 unsigned int disable_mmu(void);
 void restore_mmu(unsigned int control_register);

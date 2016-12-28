@@ -126,9 +126,9 @@ int availSort(const void *c1, const void *c2)
 void printhdr_noflip()
 {
 #ifdef CB
-	println_noflip(0,"CBHC v1.4u2 by FIX94");
+	println_noflip(0,"CBHC v1.5 by FIX94");
 #else
-	println_noflip(0,"Haxchi v2.4u1 by FIX94");
+	println_noflip(0,"Haxchi v2.5 by FIX94");
 #endif
 	println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 }

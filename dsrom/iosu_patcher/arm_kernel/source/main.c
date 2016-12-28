@@ -61,7 +61,8 @@ int _main()
 
 	unsigned int control_register = disable_mmu();
 
-	/* copy in ds vc title id to protect from moving/deleting */
+	/* copy in ds vc title id to protect from installing/moving/deleting */
+	kernel_memcpy((void*)(get_titleprot2_bin()+get_titleprot2_bin_len()-12), (void*)0x01E70108, 4);
 	kernel_memcpy((void*)(get_titleprot_bin()+get_titleprot_bin_len()-8), (void*)0x01E70108, 4);
 
 	/* save if we are booted from CBHC */
@@ -74,7 +75,7 @@ int _main()
 	*(volatile u32*)0x01E10000 = *(volatile u32*)0x1016AD18;
 
 	/* Patch kernel_error_handler to BX LR immediately */
-	*(volatile u32*)0x08129A24 = 0xE12FFF1E;
+	*(volatile u32*)kernel_phys(0x08129A24) = 0xE12FFF1E;
 
 	void * pset_fault_behavior = (void*)0x081298BC;
 	kernel_memcpy(pset_fault_behavior, (void*)repairData_set_fault_behavior, sizeof(repairData_set_fault_behavior));
@@ -92,103 +93,116 @@ int _main()
 	if(launchmode != LAUNCH_MOCHA)
 	{
 		// nop out memcmp hash checks
-		*(volatile u32*)(0x040017E0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-		*(volatile u32*)(0x040019C4 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-		*(volatile u32*)(0x04001BB0 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
-		*(volatile u32*)(0x04001D40 - 0x04000000 + 0x08280000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)crypto_phys(0x040017E0) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)crypto_phys(0x040019C4) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)crypto_phys(0x04001BB0) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)crypto_phys(0x04001D40) = 0xE3A00000; // mov r0, #0
 
 		// patch OS launch sig check
-		*(volatile u32*)(0x0500A818 - 0x05000000 + 0x081C0000) = 0x20002000; // mov r0, #0; mov r0, #0
+		*(volatile u32*)mcp_phys(0x0500A818) = 0x20002000; // mov r0, #0; mov r0, #0
+
+		// fix 10 minute timeout that crashes MCP after 10 minutes of booting
+		*(volatile u32*)mcp_phys(0x05022474) = 0xFFFFFFFF; // NEW_TIMEOUT
 	}
 
 	if(launchmode != LAUNCH_MOCHA && launchmode != LAUNCH_CFW_IMG)
 	{
-		// patch MCP authentication check
-		*(volatile u32*)(0x05014CAC - 0x05000000 + 0x081C0000) = 0x20004770; // mov r0, #0; bx lr
+		// jump to titleprot2_addr
+		*(volatile u32*)mcp_phys(0x05014670) = 0xF0F9F99C; //bl titleprot2_addr
 
-		// fix 10 minute timeout that crashes MCP after 10 minutes of booting
-		*(volatile u32*)(0x05022474 - 0x05000000 + 0x081C0000) = 0xFFFFFFFF; // NEW_TIMEOUT
+		// patch MCP authentication check
+		*(volatile u32*)mcp_phys(0x05014CAC) = 0x20004770; // mov r0, #0; bx lr
 
 		// replace ioctl 0x62 code with jump to wupserver
-		*(volatile u32*)(0x05026BA8 - 0x05000000 + 0x081C0000) = 0x47780000; // bx pc
-		*(volatile u32*)(0x05026BAC - 0x05000000 + 0x081C0000) = 0xE59F1000; // ldr r1, [pc]
-		*(volatile u32*)(0x05026BB0 - 0x05000000 + 0x081C0000) = 0xE12FFF11; // bx r1
-		*(volatile u32*)(0x05026BB4 - 0x05000000 + 0x081C0000) = wupserver_addr; // wupserver code
+		*(volatile u32*)mcp_phys(0x05026BA8) = 0x47780000; // bx pc
+		*(volatile u32*)mcp_phys(0x05026BAC) = 0xE59F1000; // ldr r1, [pc]
+		*(volatile u32*)mcp_phys(0x05026BB0) = 0xE12FFF11; // bx r1
+		*(volatile u32*)mcp_phys(0x05026BB4) = wupserver_addr; // wupserver code
 
 		// patch cert verification
-		*(volatile u32*)(0x05052A90 - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, #0
-		*(volatile u32*)(0x05052A94 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
+		*(volatile u32*)mcp_phys(0x05052A90) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)mcp_phys(0x05052A94) = 0xE12FFF1E; // bx lr
 
 		// patch IOSC_VerifyPubkeySign to always succeed
-		*(volatile u32*)(0x05052C44 - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, #0
-		*(volatile u32*)(0x05052C48 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
+		*(volatile u32*)mcp_phys(0x05052C44) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)mcp_phys(0x05052C48) = 0xE12FFF1E; // bx lr
 
 		// patch cached cert check
-		*(volatile u32*)(0x05054D6C - 0x05000000 + 0x081C0000) = 0xE3A00000; // mov r0, 0
-		*(volatile u32*)(0x05054D70 - 0x05000000 + 0x081C0000) = 0xE12FFF1E; // bx lr
+		*(volatile u32*)mcp_phys(0x05054D6C) = 0xE3A00000; // mov r0, 0
+		*(volatile u32*)mcp_phys(0x05054D70) = 0xE12FFF1E; // bx lr
 
 		// redirect mcp_debug_print to mcp_syslog_print (0x0503DCF0)
-		*(volatile u32*)(0x05055454 - 0x05000000 + 0x081C0000) = 0xEBFFA225; // bl 0x0503DCF0
+		*(volatile u32*)mcp_phys(0x05055454) = 0xEBFFA225; // bl 0x0503DCF0
 
 		if(from_cbhc) // coldboot specific patches
 		{
 			// change system.xml to syshax.xml
-			*(volatile u32*)(0x050600F0 - 0x05060000 + 0x08220000) = 0x79736861; // ysha
-			*(volatile u32*)(0x050600F4 - 0x05060000 + 0x08220000) = 0x782E786D; // x.xm
+			*(volatile u32*)mcp_rodata_phys(0x050600F0) = 0x79736861; // ysha
+			*(volatile u32*)mcp_rodata_phys(0x050600F4) = 0x782E786D; // x.xm
 
-			*(volatile u32*)(0x05060114 - 0x05060000 + 0x08220000) = 0x79736861; // ysha
-			*(volatile u32*)(0x05060118 - 0x05060000 + 0x08220000) = 0x782E786D; // x.xm
+			*(volatile u32*)mcp_rodata_phys(0x05060114) = 0x79736861; // ysha
+			*(volatile u32*)mcp_rodata_phys(0x05060118) = 0x782E786D; // x.xm
 		}
 
-		// jump to titleprot code (titleprot_addr+4)
-		*(volatile u32*)(0x05107F70 - 0x05100000 + 0x13D80000) = 0xF005FD0A; //bl (titleprot_addr+4)
+		// jump to titleprot_addr
+		*(volatile u32*)mcp_d_r_phys(0x05107F70) = 0xF005FD0A; //bl titleprot_addr
+
+		//free some mcp_d_r room for our code
+		*(volatile u32*)mcp_d_r_phys(titleprot_addr-4) = 0x20004770; // mov r0, #0; bx lr
 		// overwrite mcp_d_r code with titleprot
-		*(volatile u32*)titleprot_phys = 0x20004770; // mov r0, #0; bx lr
-		kernel_memcpy((void*)(titleprot_phys+4), get_titleprot_bin(), get_titleprot_bin_len());
-		invalidate_dcache((u32)(titleprot_phys+4), get_titleprot_bin_len());
+		kernel_memcpy((void*)mcp_d_r_phys(titleprot_addr), get_titleprot_bin(), get_titleprot_bin_len());
+		invalidate_dcache(mcp_d_r_phys(titleprot_addr), get_titleprot_bin_len());
+
+		// overwrite mcp_d_r code with titleprot2
+		kernel_memcpy((void*)mcp_d_r_phys(titleprot2_addr), get_titleprot2_bin(), get_titleprot2_bin_len());
+		invalidate_dcache(mcp_d_r_phys(titleprot2_addr), get_titleprot2_bin_len());
 		invalidate_icache();
 
+		//free some mcp_d_r room for our code
+		*(volatile u32*)mcp_d_r_phys(wupserver_addr-4) = 0x47700000; //bx lr
 		// overwrite mcp_d_r code with wupserver
-		*(volatile u32*)(0x0510E56C - 0x05100000 + 0x13D80000) = 0x47700000; //bx lr
-		kernel_memcpy((void*)wupserver_phys, get_wupserver_bin(), get_wupserver_bin_len());
-		invalidate_dcache((u32)wupserver_phys, get_wupserver_bin_len());
+		kernel_memcpy((void*)mcp_d_r_phys(wupserver_addr), get_wupserver_bin(), get_wupserver_bin_len());
+		invalidate_dcache(mcp_d_r_phys(wupserver_addr), get_wupserver_bin_len());
 		invalidate_icache();
 
 		// apply IOS ELF launch hook (thanks dimok!)
-		*(volatile u32*)0x0812A120 = ARM_BL(0x0812A120, kernel_launch_ios);
+		*(volatile u32*)kernel_phys(0x0812A120) = ARM_BL(0x0812A120, kernel_launch_ios);
 
 		// allow any region title launch
-		*(volatile u32*)(0xE0030498 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)acp_phys(0xE0030498) = 0xE3A00000; // mov r0, #0
 
 		// allow custom bootLogoTex and bootMovie.h264
-		*(volatile u32*)(0xE0030D68 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
-		*(volatile u32*)(0xE0030D34 - 0xE0000000 + 0x12900000) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)acp_phys(0xE0030D68) = 0xE3A00000; // mov r0, #0
+		*(volatile u32*)acp_phys(0xE0030D34) = 0xE3A00000; // mov r0, #0
 	}
 
 	//custom fw.img reboot
 	if(launchmode == LAUNCH_CFW_IMG)
 	{
+		//copy in new fw.img path
 		int i;
 		for (i = 0; i < 32; i++)
 			if (i < 31)
-				((char*)(0x050663B4 - 0x05000000 + 0x081C0000))[i] = ((char*)0x01E70000)[i];
+				((char*)mcp_rodata_phys(0x050663B4))[i] = ((char*)0x01E70000)[i];
 			else
-				((char*)(0x050663B4 - 0x05000000 + 0x081C0000))[i] = (char)0;
+				((char*)mcp_rodata_phys(0x050663B4))[i] = (char)0;
 
-		*(volatile u32*)(0x050282AE - 0x05000000 + 0x081C0000) = 0xF031FB43; // bl launch_os_hook
+		// jump to launch_os_hook
+		*(volatile u32*)mcp_phys(0x050282AE) = 0xF031FB43; // bl launch_os_hook
 
+		// copy launch_os_hook into free mcp code space
 		for (i = 0; i < sizeof(os_launch_hook); i++)
-			((char*)(0x05059938 - 0x05000000 + 0x081C0000))[i] = os_launch_hook[i];
+			((char*)mcp_phys(0x05059938))[i] = os_launch_hook[i];
 	}
 
 	if(from_cbhc) // coldboot specific patches
 	{
 		// patch default title id to system menu
-		*(volatile u32*)(0x050B817C - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70100;
-		*(volatile u32*)(0x050B8180 - 0x05074000 + 0x08234000) = *(volatile u32*)0x01E70104;
+		*(volatile u32*)mcp_data_phys(0x050B817C) = *(volatile u32*)0x01E70100;
+		*(volatile u32*)mcp_data_phys(0x050B8180) = *(volatile u32*)0x01E70104;
 
 		// force check USB storage on load
-		*(volatile u32*)(0xE012202C - 0xE0000000 + 0x12900000) = 0x00000001; // find USB flag
+		*(volatile u32*)acp_phys(0xE012202C) = 0x00000001; // find USB flag
 	}
 
 	*(volatile u32*)(0x1555500) = 0;

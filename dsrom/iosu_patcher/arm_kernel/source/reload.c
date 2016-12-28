@@ -28,6 +28,9 @@ void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 		// patch OS launch sig check
 		section_write_word(ios_elf_start, 0x0500A818, 0x20002000); // mov r0, #0; mov r0, #0
 
+		// jump to titleprot2_addr
+		section_write_word(ios_elf_start, 0x05014670, 0xF0F9F99C); //bl titleprot2_addr
+
 		// patch MCP authentication check
 		section_write_word(ios_elf_start, 0x05014CAC, 0x20004770); // mov r0, #0; bx lr
 
@@ -68,14 +71,20 @@ void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 			section_write_word(ios_elf_start, 0x05060118, 0x782E786D); // x.xm
 		}
 
-		// jump to titleprot code (titleprot_addr+4)
-		section_write_word(ios_elf_start, 0x05107F70, 0xF005FD0A); //bl (titleprot_addr+4)
-		// overwrite mcp_d_r code with titleprot
-		section_write_word(ios_elf_start, titleprot_addr, 0x20004770); // mov r0, #0; bx lr
-		section_write(ios_elf_start, titleprot_addr+4, get_titleprot_bin(), get_titleprot_bin_len());
+		// jump to titleprot_addr
+		section_write_word(ios_elf_start, 0x05107F70, 0xF005FD0A); //bl titleprot_addr
 
+		//free some mcp_d_r room for our code
+		section_write_word(ios_elf_start, (titleprot_addr-4), 0x20004770); // mov r0, #0; bx lr
+		// overwrite mcp_d_r code with titleprot
+		section_write(ios_elf_start, titleprot_addr, get_titleprot_bin(), get_titleprot_bin_len());
+
+		// overwrite mcp_d_r code with titleprot2
+		section_write(ios_elf_start, titleprot2_addr, get_titleprot2_bin(), get_titleprot2_bin_len());
+
+		//free some mcp_d_r room for our code
+		section_write_word(ios_elf_start, (wupserver_addr-4), 0x47700000); //bx lr
 		// overwrite mcp_d_r code with wupserver
-		section_write_word(ios_elf_start, 0x0510E56C, 0x47700000); // bx lr
 		section_write(ios_elf_start, wupserver_addr, get_wupserver_bin(), get_wupserver_bin_len());
 
 		// apply IOS ELF launch hook (thanks dimok!)
