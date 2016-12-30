@@ -44,6 +44,10 @@ static inline void section_write_word(u32 ios_elf_start, u32 address, u32 word)
     section_write(ios_elf_start, address, &word, sizeof(word));
 }
 
+static inline void section_write_ushort(u32 ios_elf_start, u32 address, u16 ushort)
+{
+    section_write(ios_elf_start, address, &ushort, sizeof(ushort));
+}
 
 static inline void patch_table_entries(u32 ios_elf_start, const patch_table_t * patch_table, u32 patch_count)
 {

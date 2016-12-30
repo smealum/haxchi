@@ -25,7 +25,7 @@ static unsigned int getButtonsDown(unsigned int padscore_handle, unsigned int vp
 #define SD_HBL_PATH "/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf"
 #define SD_MOCHA_PATH "/vol/external01/wiiu/apps/mocha/mocha.elf"
 
-static const char *verChar = "CBHC v1.5 by FIX94";
+static const char *verChar = "CBHC v1.5u1 by FIX94";
 
 #define DEFAULT_DISABLED 0
 #define DEFAULT_SYSMENU 1

@@ -54,6 +54,11 @@ void kernel_launch_ios(u32 launch_address, u32 L, u32 C, u32 H)
 		section_write_word(ios_elf_start, 0x05052C44, 0xE3A00000); // mov r0, #0
 		section_write_word(ios_elf_start, 0x05052C48, 0xE12FFF1E); // bx lr
 
+		// patch system version number
+		section_write_ushort(ios_elf_start, 0x0502F29A, 0x2363); // movs r3, #99
+		section_write_ushort(ios_elf_start, 0x0502F2AA, 0x2363); // movs r3, #99
+		section_write_ushort(ios_elf_start, 0x0502F2BA, 0x2363); // movs r3, #99
+
 		// patch cached cert check
 		section_write_word(ios_elf_start, 0x05054D6C, 0xE3A00000); // mov r0, 0
 		section_write_word(ios_elf_start, 0x05054D70, 0xE12FFF1E); // bx lr

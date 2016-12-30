@@ -119,6 +119,11 @@ int _main()
 		*(volatile u32*)mcp_phys(0x05026BB0) = 0xE12FFF11; // bx r1
 		*(volatile u32*)mcp_phys(0x05026BB4) = wupserver_addr; // wupserver code
 
+		// patch system version number
+		*(volatile u16*)mcp_phys(0x0502F29A) = 0x2363; // movs r3, #99
+		*(volatile u16*)mcp_phys(0x0502F2AA) = 0x2363; // movs r3, #99
+		*(volatile u16*)mcp_phys(0x0502F2BA) = 0x2363; // movs r3, #99
+
 		// patch cert verification
 		*(volatile u32*)mcp_phys(0x05052A90) = 0xE3A00000; // mov r0, #0
 		*(volatile u32*)mcp_phys(0x05052A94) = 0xE12FFF1E; // bx lr
