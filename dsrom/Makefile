@@ -58,6 +58,7 @@ setup:
 	@cd hbl_loader && make && cd ..
 	@cd iosu_patcher && make && cd ..
 	@cd option_select && make && cd ..
+	@cd vwii_loader && make && cd ..
 
 setup_animalcrossing:
 	@rm -f defines.s $(ROP_BIN) haxchi_rop_hook.bin
@@ -271,4 +272,5 @@ clean:
 	@cd hbl_loader && make clean && cd ..
 	@cd iosu_patcher && make clean && cd ..
 	@cd option_select && make clean && cd ..
+	@cd vwii_loader && make clean && cd ..
 	@echo "all cleaned up !"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 FIX94
+ * Copyright (C) 2016-2017 FIX94
  *
  * This software may be modified and distributed under the terms
  * of the MIT license.  See the LICENSE file for details.
@@ -25,14 +25,18 @@ static unsigned int getButtonsDown(unsigned int padscore_handle, unsigned int vp
 #define SD_HBL_PATH "/vol/external01/wiiu/apps/homebrew_launcher/homebrew_launcher.elf"
 #define SD_MOCHA_PATH "/vol/external01/wiiu/apps/mocha/mocha.elf"
 
-static const char *verChar = "CBHC v1.5u1 by FIX94";
+static const char *verChar = "CBHC v1.6 by FIX94";
+static const unsigned long long VWII_SYSMENU_TID = 0x0000000100000002ULL;
+static const unsigned long long VWII_HBC_TID = 0x000100014C554C5AULL;
 
 #define DEFAULT_DISABLED 0
 #define DEFAULT_SYSMENU 1
 #define DEFAULT_HBL 2
 #define DEFAULT_MOCHA 3
 #define DEFAULT_CFW_IMG 4
-#define DEFAULT_MAX 5
+#define DEFAULT_VWII_SYSMENU 5
+#define DEFAULT_VWII_HBC 6
+#define DEFAULT_MAX 7
 
 static const char *defOpts[DEFAULT_MAX] = {
 	"DEFAULT_DISABLED",
@@ -40,6 +44,8 @@ static const char *defOpts[DEFAULT_MAX] = {
 	"DEFAULT_HBL",
 	"DEFAULT_MOCHA",
 	"DEFAULT_CFW_IMG",
+	"DEFAULT_VWII_SYSMENU",
+	"DEFAULT_VWII_HBC",
 };
 
 static const char *bootOpts[DEFAULT_MAX] = {
@@ -48,6 +54,8 @@ static const char *bootOpts[DEFAULT_MAX] = {
 	"Homebrew Launcher",
 	"Mocha CFW",
 	"fw.img on SD Card",
+	"vWii System Menu",
+	"vWii Homebrew Channel",
 };
 
 #define OSScreenEnable(enable) OSScreenEnableEx(0, enable); OSScreenEnableEx(1, enable);
@@ -57,66 +65,55 @@ static const char *bootOpts[DEFAULT_MAX] = {
 
 uint32_t __main(void)
 {
+	/* coreinit functions */
 	unsigned int coreinit_handle;
 	OSDynLoad_Acquire("coreinit.rpl", &coreinit_handle);
 
-	void (*DCStoreRange)(const void *addr, uint32_t length);
-	OSDynLoad_FindExport(coreinit_handle, 0, "DCStoreRange", &DCStoreRange);
-
+	/* coreinit os functions*/
+	int (*OSForceFullRelaunch)(void);
+	void (*OSSleepTicks)(unsigned long long ticks);
 	void (*OSExitThread)(int);
+	unsigned long long(*OSGetTitleID)();
+
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSForceFullRelaunch", &OSForceFullRelaunch);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSSleepTicks", &OSSleepTicks);
 	OSDynLoad_FindExport(coreinit_handle, 0, "OSExitThread", &OSExitThread);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSGetTitleID", &OSGetTitleID);
 
-	unsigned int sysapp_handle;
-	OSDynLoad_Acquire("sysapp.rpl", &sysapp_handle);
+	/* coreinit os screen functions */
+	void(*OSScreenInit)();
+	void(*OSScreenEnableEx)(unsigned int bufferNum, int enable);
+	unsigned int(*OSScreenGetBufferSizeEx)(unsigned int bufferNum);
+	unsigned int(*OSScreenSetBufferEx)(unsigned int bufferNum, void * addr);
+	unsigned int(*OSScreenClearBufferEx)(unsigned int bufferNum, unsigned int temp);
+	unsigned int(*OSScreenPutFontEx)(unsigned int bufferNum, unsigned int posX, unsigned int posY, const char * buffer);
+	unsigned int(*OSScreenFlipBuffersEx)(unsigned int bufferNum);
 
-	unsigned long long(*_SYSGetSystemApplicationTitleId)(int sysApp);
-	OSDynLoad_FindExport(sysapp_handle,0,"_SYSGetSystemApplicationTitleId",&_SYSGetSystemApplicationTitleId);
-	unsigned long long sysmenu = _SYSGetSystemApplicationTitleId(0);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenInit", &OSScreenInit);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenEnableEx", &OSScreenEnableEx);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenGetBufferSizeEx", &OSScreenGetBufferSizeEx);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenSetBufferEx", &OSScreenSetBufferEx);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenClearBufferEx", &OSScreenClearBufferEx);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenPutFontEx", &OSScreenPutFontEx);
+	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenFlipBuffersEx", &OSScreenFlipBuffersEx);
 
-	unsigned int vpad_handle;
-	OSDynLoad_Acquire("vpad.rpl", &vpad_handle);
-
-	int(*VPADRead)(int controller, VPADData *buffer, unsigned int num, int *error);
-	OSDynLoad_FindExport(vpad_handle, 0, "VPADRead", &VPADRead);
-
-	int vpadError = -1;
-	VPADData vpad;
-	VPADRead(0, &vpad, 1, &vpadError);
-	if(vpadError == 0)
-	{
-		if(((vpad.btns_d|vpad.btns_h) & FORCE_SYSMENU) == FORCE_SYSMENU)
-		{
-			// iosuhax-less menu launch backup code
-			int(*_SYSLaunchTitleWithStdArgsInNoSplash)(unsigned long long tid, void *ptr);
-			OSDynLoad_FindExport(sysapp_handle,0,"_SYSLaunchTitleWithStdArgsInNoSplash",&_SYSLaunchTitleWithStdArgsInNoSplash);
-			_SYSLaunchTitleWithStdArgsInNoSplash(sysmenu, 0);
-			OSExitThread(0);
-			return 0;
-		}
-		else if(((vpad.btns_d|vpad.btns_h) & FORCE_HBL) == FORCE_HBL)
-		{
-			// original hbl loader payload
-			strcpy((void*)0xF5E70000,SD_HBL_PATH);
-			return 0x01800000;
-		}
-	}
-
+	/* coreinit memory functions */
+	void (*DCStoreRange)(const void *addr, uint32_t length);
 	unsigned int *pMEMAllocFromDefaultHeapEx;
 	unsigned int *pMEMFreeToDefaultHeap;
+	OSDynLoad_FindExport(coreinit_handle, 0, "DCStoreRange", &DCStoreRange);
 	OSDynLoad_FindExport(coreinit_handle, 1, "MEMAllocFromDefaultHeapEx", &pMEMAllocFromDefaultHeapEx);
 	OSDynLoad_FindExport(coreinit_handle, 1, "MEMFreeToDefaultHeap", &pMEMFreeToDefaultHeap);
-	void*(*MEMAllocFromDefaultHeapEx)(int size, int align) = (void*)(*pMEMAllocFromDefaultHeapEx);
-	void(*MEMFreeToDefaultHeap)(void *ptr) = (void*)(*pMEMFreeToDefaultHeap);
 
-	void *pClient = MEMAllocFromDefaultHeapEx(0x1700,4);
-	void *pCmd = MEMAllocFromDefaultHeapEx(0xA80,4);
+	void* (*MEMAllocFromDefaultHeapEx)(int size, int align) = (void*)(*pMEMAllocFromDefaultHeapEx);
+	void (*MEMFreeToDefaultHeap)(void *ptr) = (void*)(*pMEMFreeToDefaultHeap);
 
+	/* coreinit fs functions */
 	int(*FSInit)(void);
 	void(*FSShutdown)(void);
 	int(*FSAddClient)(void *pClient, int errHandling);
 	int(*FSDelClient)(void *pClient);
 	void(*FSInitCmdBlock)(void *pCmd);
-
 	int(*FSWriteFile)(void *pClient, void *pCmd, const void *buffer, int size, int count, int fd, int flag, int errHandling);
 	int(*FSCloseFile)(void *pClient, void *pCmd, int fd, int errHandling);
 
@@ -128,17 +125,50 @@ uint32_t __main(void)
 	OSDynLoad_FindExport(coreinit_handle, 0, "FSWriteFile", &FSWriteFile);
 	OSDynLoad_FindExport(coreinit_handle, 0, "FSCloseFile", &FSCloseFile);
 
+	/* act functions */
 	unsigned int act_handle;
 	OSDynLoad_Acquire("nn_act.rpl", &act_handle);
 
+	void(*nn_act_initialize)(void);
+	unsigned char(*nn_act_getslotno)(void);
+	unsigned char(*nn_act_getdefaultaccount)(void);
+	void(*nn_act_finalize)(void);
+
+	OSDynLoad_FindExport(act_handle, 0, "Initialize__Q2_2nn3actFv", &nn_act_initialize);
+	OSDynLoad_FindExport(act_handle, 0, "GetSlotNo__Q2_2nn3actFv", &nn_act_getslotno);
+	OSDynLoad_FindExport(act_handle, 0, "GetDefaultAccount__Q2_2nn3actFv", &nn_act_getdefaultaccount);
+	OSDynLoad_FindExport(act_handle, 0, "Finalize__Q2_2nn3actFv", &nn_act_finalize);
+
+	/* padscore functions */
+	unsigned int padscore_handle;
+	OSDynLoad_Acquire("padscore.rpl", &padscore_handle);
+
+	void(*WPADEnableURCC)(int enable);
+	void(*KPADSetConnectCallback)(int chan, void *ptr);
+	void*(*WPADSetSyncDeviceCallback)(void *ptr);
+	void(*KPADShutdown)(void);
+	//easly allows us callback without execute permission on other cores
+	char(*WPADGetSpeakerVolume)(void);
+	void(*WPADSetSpeakerVolume)(char);
+
+	OSDynLoad_FindExport(padscore_handle, 0, "WPADEnableURCC", &WPADEnableURCC);
+	OSDynLoad_FindExport(padscore_handle, 0, "KPADSetConnectCallback", &KPADSetConnectCallback);
+	OSDynLoad_FindExport(padscore_handle, 0, "WPADSetSyncDeviceCallback", &WPADSetSyncDeviceCallback);
+	OSDynLoad_FindExport(padscore_handle, 0, "KPADShutdown",&KPADShutdown);
+	OSDynLoad_FindExport(padscore_handle, 0, "WPADGetSpeakerVolume", &WPADGetSpeakerVolume);
+	OSDynLoad_FindExport(padscore_handle, 0, "WPADSetSpeakerVolume", &WPADSetSpeakerVolume);
+
+	/* save functions */
 	unsigned int save_handle;
 	OSDynLoad_Acquire("nn_save.rpl", &save_handle);
+
 	void(*SAVEInit)(void);
 	void(*SAVEShutdown)(void);
 	void(*SAVEInitSaveDir)(unsigned char user);
 	int(*SAVEOpenFile)(void *pClient, void *pCmd, unsigned char user, const char *path, const char *mode, int *fd, int errHandling);
 	int(*SAVEFlushQuota)(void *pClient, void *pCmd, unsigned char user, int errHandling);
 	void(*SAVERename)(void *pClient, void *pCmd, unsigned char user, const char *oldpath, const char *newpath, int errHandling);
+
 	OSDynLoad_FindExport(save_handle, 0, "SAVEInit",&SAVEInit);
 	OSDynLoad_FindExport(save_handle, 0, "SAVEShutdown",&SAVEShutdown);
 	OSDynLoad_FindExport(save_handle, 0, "SAVEInitSaveDir",&SAVEInitSaveDir);
@@ -146,24 +176,76 @@ uint32_t __main(void)
 	OSDynLoad_FindExport(save_handle, 0, "SAVEFlushQuota", &SAVEFlushQuota);
 	OSDynLoad_FindExport(save_handle, 0, "SAVERename", &SAVERename);
 
-	void(*nn_act_initialize)(void);
-	unsigned char(*nn_act_getslotno)(void);
-	unsigned char(*nn_act_getdefaultaccount)(void);
-	void(*nn_act_finalize)(void);
-	OSDynLoad_FindExport(act_handle, 0, "Initialize__Q2_2nn3actFv", &nn_act_initialize);
-	OSDynLoad_FindExport(act_handle, 0, "GetSlotNo__Q2_2nn3actFv", &nn_act_getslotno);
-	OSDynLoad_FindExport(act_handle, 0, "GetDefaultAccount__Q2_2nn3actFv", &nn_act_getdefaultaccount);
-	OSDynLoad_FindExport(act_handle, 0, "Finalize__Q2_2nn3actFv", &nn_act_finalize);
+	/* sysapp functions */
+	unsigned int sysapp_handle;
+	OSDynLoad_Acquire("sysapp.rpl", &sysapp_handle);
 
-	FSInit();
+	void (*SYSLaunchMenu)(void);
+	void(*_SYSLaunchMenuWithCheckingAccount)(unsigned char slot);
+	int(*_SYSLaunchTitleWithStdArgsInNoSplash)(unsigned long long tid, void *ptr);
+	unsigned long long(*_SYSGetSystemApplicationTitleId)(int sysApp);
+
+	OSDynLoad_FindExport(sysapp_handle, 0, "SYSLaunchMenu", &SYSLaunchMenu);
+	OSDynLoad_FindExport(sysapp_handle, 0, "_SYSLaunchMenuWithCheckingAccount", &_SYSLaunchMenuWithCheckingAccount);
+	OSDynLoad_FindExport(sysapp_handle, 0, "_SYSLaunchTitleWithStdArgsInNoSplash", &_SYSLaunchTitleWithStdArgsInNoSplash);
+	OSDynLoad_FindExport(sysapp_handle, 0, "_SYSGetSystemApplicationTitleId", &_SYSGetSystemApplicationTitleId);
+
+	/* vpad functions */
+	unsigned int vpad_handle;
+	OSDynLoad_Acquire("vpad.rpl", &vpad_handle);
+
+	int(*VPADRead)(int controller, VPADData *buffer, unsigned int num, int *error);
+
+	OSDynLoad_FindExport(vpad_handle, 0, "VPADRead", &VPADRead);
+
+	/* set up some variables */
+	int launchmode = LAUNCH_SYSMENU;
+	unsigned int dsvcid = (unsigned int)(OSGetTitleID(0) & 0xFFFFFFFF);
+	unsigned long long sysmenu = _SYSGetSystemApplicationTitleId(0);
+
 	nn_act_initialize();
 	unsigned char slot = nn_act_getslotno();
 	unsigned char defaultSlot = nn_act_getdefaultaccount();
+	nn_act_finalize();
+
+	/* pre-menu button combinations which can be held on gamepad */
+	int vpadError = -1;
+	VPADData vpad;
+	VPADRead(0, &vpad, 1, &vpadError);
+	if(vpadError == 0)
+	{
+		if(((vpad.btns_d|vpad.btns_h) & FORCE_SYSMENU) == FORCE_SYSMENU)
+		{
+			// iosuhax-less menu launch backup code
+			_SYSLaunchTitleWithStdArgsInNoSplash(sysmenu, 0);
+			OSExitThread(0);
+			return 0;
+		}
+		else if(((vpad.btns_d|vpad.btns_h) & FORCE_HBL) == FORCE_HBL)
+		{
+			// original hbl loader payload
+			strcpy((void*)0xF5E70000,SD_HBL_PATH);
+			return 0x01800000;
+		}
+		else if((vpad.btns_d|vpad.btns_h) == VPAD_BUTTON_B)
+		{
+			launchmode = LAUNCH_VWII_SYSMENU;
+			goto do_launch_selection;
+		}
+	}
+
+//cbhc_menu_start:
+	void *pClient = MEMAllocFromDefaultHeapEx(0x1700,4);
+	void *pCmd = MEMAllocFromDefaultHeapEx(0xA80,4);
+
+	//prepare FS and SAVE API
+	FSInit();
 	SAVEInit();
 	SAVEInitSaveDir(slot);
 	FSAddClient(pClient, -1);
 	FSInitCmdBlock(pCmd);
 
+	//check for autoboot file; if not found create one 
 	int autoboot = -1;
 	int iFd = -1;
 	int i;
@@ -184,60 +266,20 @@ uint32_t __main(void)
 		if (iFd >= 0)
 			FSCloseFile(pClient, pCmd, iFd, -1);
 	}
-	int launchmode = (autoboot > 0) ? (autoboot - 1) : LAUNCH_SYSMENU;
+	if(autoboot > 0)
+		launchmode = (autoboot - 1);
 	int cur_autoboot = autoboot;
 
-	void(*OSScreenInit)();
-	void(*OSScreenEnableEx)(unsigned int bufferNum, int enable);
-	unsigned int(*OSScreenGetBufferSizeEx)(unsigned int bufferNum);
-	unsigned int(*OSScreenSetBufferEx)(unsigned int bufferNum, void * addr);
-
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenInit", &OSScreenInit);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenEnableEx", &OSScreenEnableEx);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenGetBufferSizeEx", &OSScreenGetBufferSizeEx);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenSetBufferEx", &OSScreenSetBufferEx);
-
-	unsigned int(*OSScreenClearBufferEx)(unsigned int bufferNum, unsigned int temp);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenClearBufferEx", &OSScreenClearBufferEx);
-
-	unsigned int(*OSScreenPutFontEx)(unsigned int bufferNum, unsigned int posX, unsigned int posY, const char * buffer);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenPutFontEx", &OSScreenPutFontEx);
-
-	unsigned int(*OSScreenFlipBuffersEx)(unsigned int bufferNum);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSScreenFlipBuffersEx", &OSScreenFlipBuffersEx);
-
+	//fire up screens
 	OSScreenInit();
 	int screen_buf0_size = OSScreenGetBufferSizeEx(0);
 	OSScreenSetBufferEx(0, (void*)(0xF4000000));
 	OSScreenSetBufferEx(1, (void*)(0xF4000000 + screen_buf0_size));
 	OSScreenEnable(1);
 
-	unsigned long long(*OSGetTitleID)();
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSGetTitleID", &OSGetTitleID);
-	unsigned int dsvcid = (unsigned int)(OSGetTitleID(0) & 0xFFFFFFFF);
-
 	char verInfStr[64];
 	__os_snprintf(verInfStr,64,"%s (DS Title %08X)", verChar, dsvcid);
 
-	unsigned int padscore_handle;
-	OSDynLoad_Acquire("padscore.rpl", &padscore_handle);
-
-	void(*OSSleepTicks)(unsigned long long ticks);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSSleepTicks",&OSSleepTicks);
-
-	void(*WPADEnableURCC)(int enable);
-	void(*KPADSetConnectCallback)(int chan, void *ptr);
-	void*(*WPADSetSyncDeviceCallback)(void *ptr);
-	void(*KPADShutdown)(void);
-	OSDynLoad_FindExport(padscore_handle, 0, "WPADEnableURCC", &WPADEnableURCC);
-	OSDynLoad_FindExport(padscore_handle, 0, "KPADSetConnectCallback", &KPADSetConnectCallback);
-	OSDynLoad_FindExport(padscore_handle, 0, "WPADSetSyncDeviceCallback", &WPADSetSyncDeviceCallback);
-	OSDynLoad_FindExport(padscore_handle, 0, "KPADShutdown",&KPADShutdown);
-	//easly allows us callback without execute permission on other cores
-	char(*WPADGetSpeakerVolume)(void);
-	void(*WPADSetSpeakerVolume)(char);
-	OSDynLoad_FindExport(padscore_handle, 0, "WPADGetSpeakerVolume", &WPADGetSpeakerVolume);
-	OSDynLoad_FindExport(padscore_handle, 0, "WPADSetSpeakerVolume", &WPADSetSpeakerVolume);
 	//enable wiiu pro controller connection
 	WPADEnableURCC(1);
 	//hachihachi instantly disconnects wiimotes normally
@@ -250,9 +292,11 @@ uint32_t __main(void)
 	WPADSetSpeakerVolume(1);
 	WPADSetSyncDeviceCallback(WPADSetSpeakerVolume);
 
+	//no autoboot, straight to menu
 	if(autoboot == DEFAULT_DISABLED)
 		goto cbhc_menu;
 
+	//autoboot wait message
 	OSScreenClearBuffer(0);
 	OSScreenPutFont(0, 0, verInfStr);
 	OSScreenPutFont(0, 1, "Autobooting...");
@@ -275,9 +319,9 @@ uint32_t __main(void)
 		}
 		usleep(50000);
 	}
-
+	//no menu requested, autoboot
 	if(loadMenu == 0)
-		goto doIOSUexploit;
+		goto cbhc_menu_end;
 
 	OSScreenClearBuffer(0);
 	OSScreenPutFont(0, 0, verInfStr);
@@ -293,7 +337,7 @@ uint32_t __main(void)
 cbhc_menu:	;
 	int redraw = 1;
 	int PosX = 0;
-	int ListMax = 5;
+	int ListMax = 7;
 	int clickT = 0;
 	while(1)
 	{
@@ -337,7 +381,7 @@ cbhc_menu:	;
 
 		if( btnDown & VPAD_BUTTON_A )
 		{
-			if(PosX == 4)
+			if(PosX == 6)
 			{
 				cur_autoboot++;
 				if(cur_autoboot == DEFAULT_MAX)
@@ -364,8 +408,12 @@ cbhc_menu:	;
 			OSScreenPutFont(0, 3, printStr);
 			__os_snprintf(printStr,64,"%c Boot fw.img on SD Card", 3 == PosX ? '>' : ' ');
 			OSScreenPutFont(0, 4, printStr);
-			__os_snprintf(printStr,64,"%c Autoboot: %s", 4 == PosX ? '>' : ' ', bootOpts[cur_autoboot]);
+			__os_snprintf(printStr,64,"%c Boot vWii System Menu", 4 == PosX ? '>' : ' ');
 			OSScreenPutFont(0, 5, printStr);
+			__os_snprintf(printStr,64,"%c Boot vWii Homebrew Channel", 5 == PosX ? '>' : ' ');
+			OSScreenPutFont(0, 6, printStr);
+			__os_snprintf(printStr,64,"%c Autoboot: %s", 6 == PosX ? '>' : ' ', bootOpts[cur_autoboot]);
+			OSScreenPutFont(0, 7, printStr);
 
 			OSScreenFlipBuffers();
 			redraw = 0;
@@ -376,17 +424,14 @@ cbhc_menu:	;
 	OSScreenFlipBuffers();
 	usleep(50000);
 
-doIOSUexploit:
-	WPADSetSpeakerVolume(oriVol);
-	KPADShutdown();
-
+	//regular menu end, save settings, clean up and launch selection
+cbhc_menu_end:	;
 	if(cur_autoboot != autoboot)
 		SAVERename(pClient, pCmd, slot, defOpts[autoboot], defOpts[cur_autoboot], -1);
 
 	SAVEFlushQuota(pClient, pCmd, slot, -1);
 	FSDelClient(pClient);
 	SAVEShutdown();
-	nn_act_finalize();
 	FSShutdown();
 
 	MEMFreeToDefaultHeap(pClient);
@@ -395,14 +440,10 @@ doIOSUexploit:
 	OSScreenClearBuffer(0);
 	OSScreenFlipBuffers();
 
-	int (*OSForceFullRelaunch)(void);
-	OSDynLoad_FindExport(coreinit_handle, 0, "OSForceFullRelaunch", &OSForceFullRelaunch);
+	WPADSetSpeakerVolume(oriVol);
 
-	//for patched menu launch
-	void (*SYSLaunchMenu)(void);
-	OSDynLoad_FindExport(sysapp_handle, 0,"SYSLaunchMenu", &SYSLaunchMenu);
-	void(*_SYSLaunchMenuWithCheckingAccount)(unsigned char slot);
-	OSDynLoad_FindExport(sysapp_handle,0,"_SYSLaunchMenuWithCheckingAccount",&_SYSLaunchMenuWithCheckingAccount);
+do_launch_selection: ;
+	KPADShutdown();
 
 	//store path to sd fw.img for arm_kernel
 	if(launchmode == LAUNCH_CFW_IMG)
@@ -424,6 +465,18 @@ doIOSUexploit:
 	{
 		strcpy((void*)0xF5E70000,SD_MOCHA_PATH);
 		return 0x01800000;
+	}
+	else if(launchmode == LAUNCH_VWII_SYSMENU)
+	{
+		// vwii system menu bootup
+		memcpy((void*)0xF5E70000, &VWII_SYSMENU_TID, 8);
+		return 0x0180C000;
+	}
+	else if(launchmode == LAUNCH_VWII_HBC)
+	{
+		// vwii system menu bootup
+		memcpy((void*)0xF5E70000, &VWII_HBC_TID, 8);
+		return 0x0180C000;
 	}
 
 	//sysmenu or cfw

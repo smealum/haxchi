@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 FIX94
+ * Copyright (C) 2016-2017 FIX94
  *
  * This software may be modified and distributed under the terms
  * of the MIT license.  See the LICENSE file for details.
@@ -126,9 +126,9 @@ int availSort(const void *c1, const void *c2)
 void printhdr_noflip()
 {
 #ifdef CB
-	println_noflip(0,"CBHC v1.5u1 by FIX94");
+	println_noflip(0,"CBHC v1.6 by FIX94");
 #else
-	println_noflip(0,"Haxchi v2.5u1 by FIX94");
+	println_noflip(0,"Haxchi v2.5u2 by FIX94");
 #endif
 	println_noflip(1,"Credits to smea, plutoo, yellows8, naehrwert, derrek and dimok");
 }
@@ -139,12 +139,13 @@ int Menu_Main(void)
 	InitSysFunctionPointers();
 	InitVPadFunctionPointers();
 	VPADInit();
+	memoryInitialize();
 
 	// Init screen
 	OSScreenInit();
 	int screen_buf0_size = OSScreenGetBufferSizeEx(0);
 	int screen_buf1_size = OSScreenGetBufferSizeEx(1);
-	uint8_t *screenBuffer = memalign(0x100, screen_buf0_size+screen_buf1_size);
+	uint8_t *screenBuffer = (uint8_t*)MEMBucket_alloc(screen_buf0_size+screen_buf1_size, 0x100);
 	OSScreenSetBufferEx(0, screenBuffer);
 	OSScreenSetBufferEx(1, (screenBuffer + screen_buf0_size));
 	OSScreenEnableEx(0, 1);
@@ -155,14 +156,14 @@ int Menu_Main(void)
 	int mcp_handle = MCP_Open();
 	int count = MCP_TitleCount(mcp_handle);
 	int listSize = count*0x61;
-	char *tList = memalign(32, listSize);
+	char *tList = memalign(32, listSize); //cant be in MEMBucket
 	memset(tList, 0, listSize);
 	int recievedCount = count;
 	MCP_TitleList(mcp_handle, &recievedCount, tList, listSize);
 	MCP_Close(mcp_handle);
 
 	int gAvailCnt = 0;
-	parsedList_t *gAvail = (parsedList_t*)malloc(recievedCount*sizeof(parsedList_t));
+	parsedList_t *gAvail = (parsedList_t*)MEMBucket_alloc(recievedCount*sizeof(parsedList_t), 4);
 	memset(gAvail, 0, recievedCount*sizeof(parsedList_t));
 
 	int i, j;
@@ -209,7 +210,8 @@ int Menu_Main(void)
 		}
 		OSScreenEnableEx(0, 0);
 		OSScreenEnableEx(1, 0);
-		free(screenBuffer);
+		MEMBucket_free(screenBuffer);
+		memoryRelease();
 		return EXIT_SUCCESS;
 	}
 
@@ -235,7 +237,8 @@ int Menu_Main(void)
 		{
 			OSScreenEnableEx(0, 0);
 			OSScreenEnableEx(1, 0);
-			free(screenBuffer);
+			MEMBucket_free(screenBuffer);
+			memoryRelease();
 			return EXIT_SUCCESS;
 		}
 		if( vpad.btns_h & VPAD_BUTTON_DOWN )
@@ -339,7 +342,8 @@ int Menu_Main(void)
 		{
 			OSScreenEnableEx(0, 0);
 			OSScreenEnableEx(1, 0);
-			free(screenBuffer);
+			MEMBucket_free(screenBuffer);
+			memoryRelease();
 			return EXIT_SUCCESS;
 		}
 		//lets go!
@@ -409,7 +413,7 @@ int Menu_Main(void)
 			fileStat_s stats;
 			IOSUHAX_FSA_StatFile(fsaFd, slcFd, &stats);
 			size_t sysXmlSize = stats.size;
-			char *sysXmlBuf = malloc(sysXmlSize+1);
+			char *sysXmlBuf = MEMBucket_alloc(sysXmlSize+1,4);
 			memset(sysXmlBuf, 0, sysXmlSize+1);
 			fsa_read(fsaFd, slcFd, sysXmlBuf, sysXmlSize);
 			IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
@@ -430,7 +434,7 @@ int Menu_Main(void)
 				}
 			}
 			xmlFreeDoc(doc);
-			free(sysXmlBuf);
+			MEMBucket_free(sysXmlBuf);
 			if(idFound != 1)
 				println(line++,"default_title_id missing!");
 			else if(idCorrect != 1)
@@ -443,7 +447,7 @@ int Menu_Main(void)
 					fileStat_s stats;
 					IOSUHAX_FSA_StatFile(fsaFd, slcFd, &stats);
 					size_t sysXmlSize = stats.size;
-					sysXmlBuf = malloc(sysXmlSize+1);
+					sysXmlBuf = MEMBucket_alloc(sysXmlSize+1,4);
 					memset(sysXmlBuf, 0, sysXmlSize+1);
 					fsa_read(fsaFd, slcFd, sysXmlBuf, sysXmlSize);
 					IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
@@ -479,7 +483,7 @@ int Menu_Main(void)
 							println(line++,"Removed coldboothax!");
 						}
 					}
-					free(sysXmlBuf);
+					MEMBucket_free(sysXmlBuf);
 				}
 				else
 					println(line++,"syshax.xml backup not found, aborting!");
@@ -530,7 +534,7 @@ int Menu_Main(void)
 		fileStat_s stats;
 		IOSUHAX_FSA_StatFile(fsaFd, sdFd, &stats);
 		size_t cfgSize = stats.size;
-		uint8_t *cfgBuf = malloc(cfgSize);
+		uint8_t *cfgBuf = MEMBucket_alloc(cfgSize,4);
 		fsa_read(fsaFd, sdFd, cfgBuf, cfgSize);
 		IOSUHAX_FSA_CloseFile(fsaFd, sdFd);
 		sdFd = -1;
@@ -545,7 +549,7 @@ int Menu_Main(void)
 			//make it readable by game
 			IOSUHAX_FSA_ChangeMode(fsaFd, path, 0x644);
 		}
-		free(cfgBuf);
+		MEMBucket_free(cfgBuf);
 	}
 #endif
 
@@ -556,7 +560,7 @@ int Menu_Main(void)
 		fileStat_s stats;
 		IOSUHAX_FSA_StatFile(fsaFd, sdFd, &stats);
 		size_t titleSize = stats.size;
-		xmlChar *titleBuf = malloc(titleSize+1);
+		xmlChar *titleBuf = MEMBucket_alloc(titleSize+1,4);
 		memset(titleBuf, 0, titleSize+1);
 		fsa_read(fsaFd, sdFd, titleBuf, titleSize);
 		IOSUHAX_FSA_CloseFile(fsaFd, sdFd);
@@ -566,7 +570,7 @@ int Menu_Main(void)
 		{
 			IOSUHAX_FSA_StatFile(fsaFd, mlcFd, &stats);
 			size_t metaSize = stats.size;
-			char *metaBuf = malloc(metaSize);
+			char *metaBuf = MEMBucket_alloc(metaSize,4);
 			fsa_read(fsaFd, mlcFd, metaBuf, metaSize);
 			IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
 			mlcFd = -1;
@@ -612,9 +616,9 @@ int Menu_Main(void)
 				}
 				free(newXml);
 			}
-			free(metaBuf);
+			MEMBucket_free(metaBuf);
 		}
-		free(titleBuf);
+		MEMBucket_free(titleBuf);
 	}
 
 	sprintf(sdPath,"%s/bootDrcTex.tga",sdHaxchiPath);
@@ -624,7 +628,7 @@ int Menu_Main(void)
 		fileStat_s stats;
 		IOSUHAX_FSA_StatFile(fsaFd, sdFd, &stats);
 		size_t bootDrcTexSize = stats.size;
-		uint8_t *bootDrcTex = malloc(bootDrcTexSize);
+		uint8_t *bootDrcTex = MEMBucket_alloc(bootDrcTexSize,4);
 		fsa_read(fsaFd, sdFd, bootDrcTex, bootDrcTexSize);
 		IOSUHAX_FSA_CloseFile(fsaFd, sdFd);
 		sdFd = -1;
@@ -637,7 +641,7 @@ int Menu_Main(void)
 			IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
 			mlcFd = -1;
 		}
-		free(bootDrcTex);
+		MEMBucket_free(bootDrcTex);
 	}
 
 	sprintf(sdPath,"%s/bootTvTex.tga",sdHaxchiPath);
@@ -647,7 +651,7 @@ int Menu_Main(void)
 		fileStat_s stats;
 		IOSUHAX_FSA_StatFile(fsaFd, sdFd, &stats);
 		size_t bootTvTexSize = stats.size;
-		uint8_t *bootTvTex = malloc(bootTvTexSize);
+		uint8_t *bootTvTex = MEMBucket_alloc(bootTvTexSize,4);
 		fsa_read(fsaFd, sdFd, bootTvTex, bootTvTexSize);
 		IOSUHAX_FSA_CloseFile(fsaFd, sdFd);
 		sdFd = -1;
@@ -660,7 +664,7 @@ int Menu_Main(void)
 			IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
 			mlcFd = -1;
 		}
-		free(bootTvTex);
+		MEMBucket_free(bootTvTex);
 	}
 
 	sprintf(sdPath,"%s/iconTex.tga",sdHaxchiPath);
@@ -670,7 +674,7 @@ int Menu_Main(void)
 		fileStat_s stats;
 		IOSUHAX_FSA_StatFile(fsaFd, sdFd, &stats);
 		size_t iconTexSize = stats.size;
-		uint8_t *iconTex = malloc(iconTexSize);
+		uint8_t *iconTex = MEMBucket_alloc(iconTexSize,4);
 		fsa_read(fsaFd, sdFd, iconTex, iconTexSize);
 		IOSUHAX_FSA_CloseFile(fsaFd, sdFd);
 		sdFd = -1;
@@ -683,7 +687,7 @@ int Menu_Main(void)
 			IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
 			mlcFd = -1;
 		}
-		free(iconTex);
+		MEMBucket_free(iconTex);
 	}
 
 	sprintf(sdPath,"%s/bootSound.btsnd",sdHaxchiPath);
@@ -693,7 +697,7 @@ int Menu_Main(void)
 		fileStat_s stats;
 		IOSUHAX_FSA_StatFile(fsaFd, sdFd, &stats);
 		size_t bootSoundSize = stats.size;
-		uint8_t *bootSound = malloc(bootSoundSize);
+		uint8_t *bootSound = MEMBucket_alloc(bootSoundSize,4);
 		fsa_read(fsaFd, sdFd, bootSound, bootSoundSize);
 		IOSUHAX_FSA_CloseFile(fsaFd, sdFd);
 		sdFd = -1;
@@ -706,7 +710,7 @@ int Menu_Main(void)
 			IOSUHAX_FSA_CloseFile(fsaFd, mlcFd);
 			mlcFd = -1;
 		}
-		free(bootSound);
+		MEMBucket_free(bootSound);
 	}
 
 #ifdef CB
@@ -716,7 +720,7 @@ int Menu_Main(void)
 		fileStat_s stats;
 		IOSUHAX_FSA_StatFile(fsaFd, slcFd, &stats);
 		size_t sysXmlSize = stats.size;
-		char *sysXmlBuf = malloc(sysXmlSize+1);
+		char *sysXmlBuf = MEMBucket_alloc(sysXmlSize+1,4);
 		memset(sysXmlBuf, 0, sysXmlSize+1);
 		fsa_read(fsaFd, slcFd, sysXmlBuf, sysXmlSize);
 		IOSUHAX_FSA_CloseFile(fsaFd, slcFd);
@@ -820,7 +824,7 @@ int Menu_Main(void)
 				}
 			}
 		}
-		free(sysXmlBuf);
+		MEMBucket_free(sysXmlBuf);
 	}
 	println(line++,"Done installing CBHC!");
 #else
@@ -828,10 +832,10 @@ int Menu_Main(void)
 #endif
 
 prgEnd:
-	if(tList)
+	if(tList) //cant be in MEMBucket
 		free(tList);
 	if(gAvail)
-		free(gAvail);
+		MEMBucket_free(gAvail);
 	//close down everything fsa related
 	if(fsaFd >= 0)
 	{
@@ -861,6 +865,7 @@ prgEnd:
 	SYSLaunchMenu();
 	OSScreenEnableEx(0, 0);
 	OSScreenEnableEx(1, 0);
-	free(screenBuffer);
+	MEMBucket_free(screenBuffer);
+	memoryRelease();
 	return EXIT_RELAUNCH_ON_LOAD;
 }
