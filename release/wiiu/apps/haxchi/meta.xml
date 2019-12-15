@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<app version="1">
+  <name>Haxchi</name>
+  <coder>FIX94</coder>
+  <version>2.5u2</version>
+  <url>https://github.com/FIX94/haxchi</url>
+  <release_date>20170113200000</release_date>
+  <short_description>Haxchi Installer</short_description>
+  <long_description>This will install Haxchi on your system.
+  </long_description>
+</app>
